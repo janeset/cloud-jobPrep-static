@@ -2,7 +2,7 @@
 
 Cloud engineering prep for AWS and Azure roles around Toronto and Kitchener-Waterloo: an 8-week
 track with hands-on labs, AWS certification practice exams, and the skills real Cloud Engineer
-postings ask for. No build step, no backend: plain HTML, CSS and JavaScript. Part of [Job Preps](../README.md).
+postings ask for. No build step, no backend: plain HTML, CSS and JavaScript. One of four Job Preps apps, each in its own repo: DSA Prep, Cloud Prep, AI / LLM Prep and System Design Prep.
 
 ## Run it
 
