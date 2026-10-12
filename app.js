@@ -99,12 +99,12 @@ const TIERS = [
   {
     id: 2, name: "Mid-size tech & startups", bar: "Hands-on",
     emphasis: "Practical platform work: Terraform, CI/CD, containers and observability. Often a take-home, a live troubleshooting exercise or a walk-through of something you built.",
-    names: ["Faire", "Clio", "Wealthsimple", "D2L", "OpenText", "Descartes", "Dayforce", "Thomson Reuters", "Miovision", "Magnet Forensics", "Communitech-area startups"],
+    names: ["Faire", "Clio", "Wealthsimple", "D2L", "OpenText", "Descartes", "Dayforce", "Thomson Reuters", "Miovision", "Magnet Forensics"],
   },
   {
     id: 3, name: "Banks, insurers & other local employers", bar: "Governance & security",
     emphasis: "Azure-heavy estates with landing zones, identity, network security and change management. Compliance and clear communication matter; AZ-104 or SAA-C03 is valued.",
-    names: ["RBC", "TD", "Scotiabank", "BMO", "CIBC", "Manulife", "Sun Life", "Canada Life", "Intact", "Equitable Bank", "Ontario Public Service", "Eclipse Automation (Cambridge)"],
+    names: ["RBC", "TD", "Scotiabank", "BMO", "CIBC", "Manulife", "Sun Life", "Canada Life", "Intact", "Equitable Bank", "Ontario Public Service"],
   },
 ];
 

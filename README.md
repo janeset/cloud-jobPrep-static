@@ -16,7 +16,7 @@ Then visit http://localhost:5175. Opening `index.html` directly also works, but 
 
 | Page | What it does |
 | --- | --- |
-| Home | "Where are you starting from?" (new to IT, or already in IT), a Start here / Continue button to the next lesson on your path, track progress, AWS readiness, role readiness, a weekly rhythm and the 8 weeks at a glance |
+| Home | "Where are you starting from?" (new to IT, or already in IT) and one next step ("Today: Lesson 1", then Continue). Progress, the 8-week plan, AWS and role readiness and a weekly rhythm sit under **More** |
 | Cloud | **Cloud from zero** (five plain-language lessons for people with no IT background: computers and servers, how the internet works, the command line, what the cloud is, accounts and security), then 16 topics. Each lesson defines its terms, leads with the cloud you follow (AWS, Azure or both) and ends with checks; a lesson is complete when its checks are all answered correctly. Also: roadmap, interview question bank, exam-style quiz, labs (each step has the expected result, a hint and an example; every lab starts with a cost warning and ends with a clean-up step), certification paths |
 | AWS Certs | Exam prep for CLF-C02 and SAA-C03: official domains and weightings, study notes, readiness checklists, week-by-week plans, timed practice exams and tutor mode with per-domain results |
 | Interview | Timed mock interviews (technical questions for Cloud Engineer or AI Cloud Engineer, plus behavioural) with self-scoring; weak answers are flagged "Review again" in the question bank. STAR story bank with theme and skill coverage; history |
@@ -31,7 +31,7 @@ Python exercises run in the browser via [Pyodide](https://pyodide.org) (loaded f
 
 | File | Contents |
 | --- | --- |
-| `index.html`, `style.css`, `app.js` | App shell, design system / themes, Home / Companies / Settings and the Python runner |
+| `index.html`, `style.css`, `app.js`, `favicon.svg` | App shell, design system / themes, Home / Companies / Settings and the Python runner |
 | `tracks.js` | Video helpers, the track registry and `extendTrack` (loaded first) |
 | `cloud.js`, `cloud-more.js` | Cloud track content, and extra lessons, exercises (with hints and model answers), questions and glossary merged into it |
 | `cloud-zero.js` | Cloud from zero (the beginner lessons and their checks), the beginner topic order and week plan, and short Learn addresses |
@@ -43,6 +43,7 @@ Python exercises run in the browser via [Pyodide](https://pyodide.org) (loaded f
 | `interview.js` | Mock interviews, behavioural question bank, STAR story bank and mock history |
 | `router.js` | URL routing (`#/cloud/learn/networking`, `#/aws/saa`...): refresh, Back/Forward and bookmarks |
 | `search.js` | Search index and the Ctrl+K dialog |
+| `TODO-content.md` | Lessons still to write (Linux, Bash, Python for automation, Terraform basics), linked from Cloud from zero |
 
 ## Your data
 

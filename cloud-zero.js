@@ -28,6 +28,17 @@ extendTrack(CLOUD, {
         <li>The server's <b>processor</b> runs the program that handles photo requests. It uses <b>memory</b> while it works and reads the photo from its <b>storage</b>.</li>
         <li>The server sends the photo back as a <b>response</b>. Your phone shows it.</li></ol>
         <p>Nothing magic happened: one computer asked, another answered. "The cloud" is a very large number of those answering computers, which you'll meet properly in <button class="link-btn inline-link" data-trsel="cloud|zero-cloud">What the cloud really is</button>.</p>`,
+      // Optional and not checked: shown before the checks, never needed to complete the lesson.
+      tryit: {
+        title: "Open a free AWS account, safely",
+        intro: "You'll need an account for the labs later. These three steps take about 20 minutes and follow AWS's own guides. The Free plan never charges you: it ends after six months or when the sign-up credits run out, and you can upgrade later.",
+        steps: [
+          { text: "Create an AWS account and choose the Free plan when asked for an account plan. You'll need an email address, a phone number and a payment card for identity checks.", link: "https://docs.aws.amazon.com/accounts/latest/reference/getting-started.html", label: "AWS guide: Sign up for AWS" },
+          { text: "Turn on MFA for the root user (the email address you signed up with), using an authenticator app on your phone.", link: "https://docs.aws.amazon.com/IAM/latest/UserGuide/enable-virt-mfa-for-root.html", label: "AWS guide: Enable a virtual MFA device for the root user" },
+          { text: "Create a monthly cost budget with an email alert, for example $10, using the simplified budget template.", link: "https://docs.aws.amazon.com/cost-management/latest/userguide/budget-templates.html", label: "AWS guide: Using a budget template" },
+        ],
+        plans: { link: "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html", label: "How the Free and Paid plans differ" },
+      },
       cards: [
         ["What's the difference between memory (RAM) and storage?", "Memory is fast, short-term space that's emptied when the power goes off. Storage keeps files long-term, even without power."],
         ["Client or server: which one asks and which one answers?", "The client asks (sends a request); the server answers (sends a response)."],
