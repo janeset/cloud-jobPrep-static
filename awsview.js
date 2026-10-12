@@ -109,7 +109,7 @@ function awsExam(e) {
         <div class="row" style="margin-top:12px"><button class="btn small primary" data-axstart="${e.id}|tutor|${d.n}">Practice this domain (${perDomain(d.n)} questions)</button>
           ${d.topics.filter(([tr, tid]) => topicById(TRACKS[tr], tid)).map(([tr, tid]) => `<button class="btn small ghost" data-trgo="${tr}|learn|${tid}">${esc(topicById(TRACKS[tr], tid).title)}</button>`).join("")}</div>
       </details>`).join("")}
-    <div class="card"><h3>Full course</h3>${vids(e.videos)}</div>`;
+    ${e.videos.length ? `<div class="card"><h3>Full course</h3>${vids(e.videos)}</div>` : ""}`;
 }
 
 function awsTips() {

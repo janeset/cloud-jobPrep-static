@@ -18,8 +18,8 @@ Then visit http://localhost:5175. Opening `index.html` directly also works, but 
 | Page | What it does |
 | --- | --- |
 | Home | "Where are you starting from?" (new to IT, or already in IT) and one next step ("Today: Lesson 1", then Continue). Progress, the plan's phases, AWS and role readiness and a weekly rhythm sit under **More** |
-| Cloud | **Cloud from zero** (five plain-language lessons for people with no IT background: computers and servers, how the internet works, the command line, what the cloud is, accounts and security), then 24 topics (including Linux, Bash, Python for automation, Terraform basics, billing and three AWS deep dives). Each lesson defines its terms, leads with the cloud you follow (AWS, Azure or both) and ends with checks; a lesson is complete when its checks are all answered correctly. Also: a roadmap in six phases, each ending in an AWS exam, with target dates at your pace (10, 12 or 15 hours a week), interview question bank, exam-style quiz, labs (each step has the expected result, a hint and an example; every lab starts with a cost warning and ends with a clean-up step), AWS certifications (Certs) and Azure / Google Cloud certifications (Other certifications) |
-| AWS Certs | Exam prep for CLF-C02 and SAA-C03: official domains and weightings, study notes, readiness checklists, week-by-week plans, timed practice exams and tutor mode with per-domain results |
+| Cloud | **Cloud from zero** (five plain-language lessons for people with no IT background: computers and servers, how the internet works, the command line, what the cloud is, accounts and security), then 27 topics (including Linux, Bash, Python for automation, Terraform basics, billing, three AWS deep dives and three AI Practitioner lessons). Each lesson defines its terms, leads with the cloud you follow (AWS, Azure or both) and ends with checks; a lesson is complete when its checks are all answered correctly. Also: a roadmap in six phases, each ending in an AWS exam, with target dates at your pace (10, 12 or 15 hours a week), interview question bank, exam-style quiz, labs (each step has the expected result, a hint and an example; every lab starts with a cost warning and ends with a clean-up step), AWS certifications (Certs) and Azure / Google Cloud certifications (Other certifications) |
+| AWS Certs | Exam prep for CLF-C02, AIF-C01 and SAA-C03: official domains and weightings, study notes, readiness checklists, week-by-week plans, timed practice exams and tutor mode with per-domain results |
 | Interview | Timed mock interviews (technical questions for Cloud Engineer or AI Cloud Engineer, plus behavioural) with self-scoring; weak answers are flagged "Review again" in the question bank. STAR story bank with theme and skill coverage; history |
 | Roles | Cloud Engineer and AI Cloud Engineer: skill demand across postings, self-rating and readiness, an **Add posting** form with skill suggestions, gap lessons with runnable Python exercises, questions, quiz and projects |
 | Companies | What cloud interviews look like at each tier of local employer, and an application tracker linked to postings |
@@ -37,10 +37,11 @@ Python exercises run in the browser via [Pyodide](https://pyodide.org) (loaded f
 | `cloud.js`, `cloud-more.js` | Cloud track content, and extra lessons, exercises (with hints and model answers), questions and glossary merged into it |
 | `cloud-skills.js` | Linux, Bash, Python for automation and Terraform basics lessons |
 | `cloud-aws.js` | AWS exam-depth lessons: billing, pricing & support, and the networking, storage / databases and security deep dives |
+| `cloud-ai.js` | AI Practitioner lessons: AI and ML fundamentals, generative AI & Amazon Bedrock, responsible AI, security & governance |
 | `cloud-zero.js` | Cloud from zero (the beginner lessons and their checks), the lesson order for each path, and short Learn addresses |
 | `cloud-plan.js` | The study plan (phases, weeks and exams) and the certifications shown in Certs and Other certifications |
 | `trackview.js` | Track engine (overview, learn, questions, quiz, labs, certs), the Learn path and checks-based completion, the progress migration, and the Home page |
-| `awscerts.js`, `awsview.js` | AWS certification content and the practice-exam engine |
+| `awscerts.js`, `awsview.js` | AWS certification content (CLF, AIF, SAA) and the practice-exam engine |
 | `roles.js` | Role definitions, the shared skill catalog, skill keywords and built-in postings |
 | `roles-learn.js` | Roles lessons, questions, quiz, projects and glossary |
 | `roleview.js` | Roles pages: demand, readiness, postings and the add-posting form |

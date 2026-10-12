@@ -18,17 +18,18 @@ aws.amazon.com on 2026-10-12; DVA-C03 and SAP-C03 exam guides are due on 2026-10
 - [x] More CLF and SAA practice questions
 
 ## Stage 3: AI Practitioner (AIF-C01) and Developer – Associate (DVA-C03)
-- [ ] AIF exam page in AWS Certs (domains and weightings from the official exam guide)
-- [ ] AI and ML fundamentals
-- [ ] Generative AI and foundation models; Amazon Bedrock (with a small lab)
-- [ ] Responsible AI; security and governance for AI
+- [x] AIF exam page in AWS Certs (exam guide v1.1)
+- [x] AI and ML fundamentals
+- [x] Generative AI and foundation models; Amazon Bedrock (with a playground task)
+- [x] Responsible AI; security and governance for AI
 - [ ] DVA exam page (wait for the DVA-C03 exam guide, due 2026-10-27)
 - [ ] DVA: Lambda and API Gateway in depth
 - [ ] DVA: DynamoDB for developers
 - [ ] DVA: Cognito and application security
 - [ ] DVA: SAM, CDK and the Code services
 - [ ] DVA: troubleshooting and optimization
-- [ ] AIF and DVA practice question banks
+- [x] AIF practice question bank
+- [ ] DVA practice question bank
 
 ## Stage 4: Solutions Architect – Professional (SAP-C03)
 - [ ] SAP exam page (wait for the SAP-C03 exam guide, due 2026-10-27)

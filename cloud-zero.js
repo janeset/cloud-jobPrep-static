@@ -254,6 +254,7 @@ note.txt`,
     ["Data", ["storage", "databases", "data"]],
     ["Networking & integration", ["networking", "messaging"]],
     ["Operations & architecture", ["devops", "operations", "billing", "architecture"]],
+    ["AI on AWS", ["aifund", "genai", "airesp"]],
     ["Solutions Architect deep dives", ["netdeep", "datadeep", "secdeep"]],
   ],
 });
@@ -270,12 +271,13 @@ CLOUD.aliases = {
   identity: "iam", secrets: "security", vm: "compute", vms: "compute", ec2: "compute", docker: "containers", lambda: "serverless", functions: "serverless",
   s3: "storage", blob: "storage", db: "databases", database: "databases", sql: "databases", network: "networking", vpc: "networking", vnet: "networking",
   queues: "messaging", events: "messaging", iac: "devops", cicd: "devops", hcl: "terraform", shell: "bash", scripting: "bash", boto3: "python", ssh: "linux", "ci-cd": "devops", monitoring: "operations", observability: "operations",
-  cost: "billing", pricing: "billing", support: "billing", caf: "billing", dr: "architecture", "disaster-recovery": "architecture", analytics: "data", "landing-zone": "governance", migration: "governance",
+  cost: "billing", pricing: "billing", support: "billing", caf: "billing", dr: "architecture", "disaster-recovery": "architecture", analytics: "data", ai: "aifund", ml: "aifund", genai: "genai", bedrock: "genai", rag: "genai", "responsible-ai": "airesp", guardrails: "airesp", "landing-zone": "governance", migration: "governance",
 };
 CLOUD.groupsNew = [
   ["Cloud from zero", ZERO_IDS],
   ["Foundations", ["fundamentals", "linux", "bash", "iam"]],
   ["Core AWS services", ["networking", "security", "storage", "compute", "databases", "operations", "billing"]],
+  ["AI on AWS", ["aifund", "genai", "airesp"]],
   ["Building on AWS", ["containers", "serverless", "messaging", "python", "terraform", "kubernetes"]],
   ["Architecture", ["architecture", "data", "governance"]],
   ["Solutions Architect deep dives", ["netdeep", "datadeep", "secdeep"]],
