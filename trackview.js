@@ -6,7 +6,8 @@
 TRACKS.cloud = CLOUD;
 CLOUD.earned = true; // topics complete through their checks (topicDone)
 
-const TRACK_TABS = (id) => TRACKS[id].tabs || [["overview", "Overview"], ["roadmap", "Roadmap"], ["learn", "Learn"], ["questions", "Questions"], ["quiz", "Quiz"], ["labs", TRACKS[id].labsName], ["certs", "Certs"]];
+const TRACK_TABS = (id) => TRACKS[id].tabs || [["overview", "Overview"], ["roadmap", "Roadmap"], ["learn", "Learn"], ["questions", "Questions"], ["quiz", "Quiz"], ["labs", TRACKS[id].labsName], ["certs", "Certs"]]
+  .concat(TRACKS[id].otherCerts ? [["othercerts", "Other certifications"]] : []);
 const CERT_STATUSES = ["Not planned", "Planning", "Studying", "Booked", "Passed"];
 const TRACK_ICON = {
   cloud: `<svg viewBox="0 0 24 24"><path d="M7 18h10.5a4 4 0 0 0 .4-8A6 6 0 0 0 6.4 9.2 4.5 4.5 0 0 0 7 18z"/></svg>`,
@@ -28,7 +29,9 @@ function bump() { const t = today(); S.activity[t] = (S.activity[t] || 0) + 1; }
 function trackWeek(id) {
   const st = trState(id), T = TRACKS[id];
   if (!st.start) return 0;
-  return Math.min(trWeeks(T).length, Math.max(1, Math.floor(dayDiff(st.start, today()) / 7) + 1));
+  // Weeks are sized for T.pace hours; studying more (or less) a week moves through them faster (or slower).
+  const scale = T.pace ? studyPace() / T.pace : 1;
+  return Math.min(trWeeks(T).length, Math.max(1, Math.floor(dayDiff(st.start, today()) / 7 * scale) + 1));
 }
 const labDone = (id, lab) => lab.steps.every((_, k) => trState(id).labs[`${lab.id}:${k}`]);
 const labSteps = (id, lab) => lab.steps.filter((_, k) => trState(id).labs[`${lab.id}:${k}`]).length;
@@ -45,13 +48,24 @@ const progressText = (p) => `${p.read}/${p.topics} lessons · ${p.labs}/${p.labs
 
 // ---------------- the Learn path (Cloud) ----------------
 // Home asks where you're starting from. New to IT (the default until you choose): Cloud from zero,
-// then the topics in an order that builds on itself (groupsNew / weeksNew in cloud-zero.js).
+// then the topics in an order that builds on itself (groupsNew in cloud-zero.js; the plan is cloud-plan.js).
 // Already in IT: the original order, with Cloud from zero shown as optional and left off the path.
 // Tracks without groupsNew (Roles) keep their own groups and order.
 const LEVELS = [["new", "I'm new to IT and cloud"], ["it", "I already work in IT or software"]];
 const beginner = () => S.level !== "it";
 const trGroups = (T) => (T.groupsNew && beginner() ? T.groupsNew : T.groups);
-const trWeeks = (T) => (T.weeksNew && beginner() ? T.weeksNew : T.weeks);
+// The plan's weeks, numbered in order. Tracks with phases (Cloud, cloud-plan.js) build them from the
+// phases, each week knowing its phase; others use their own weeks list.
+function trWeeks(T) {
+  if (!T.phases) return T.weeks;
+  let n = 0;
+  return T.phases.flatMap((ph) => ((!beginner() && ph.weeksIt) || ph.weeks).map((w) => Object.assign({}, w, { n: ++n, phase: ph.id })));
+}
+const phaseWeeks = (T, ph) => trWeeks(T).filter((w) => w.phase === ph.id);
+const phaseHours = (ph) => phaseWeeks(TRACKS.cloud, ph).length * TRACKS.cloud.pace; // each week is sized for T.pace hours
+// Hours a week the learner plans to study (Settings); the plan is sized for CLOUD.pace.
+const PACES = [["10", "10 h"], ["12", "12 h"], ["15", "15 h"]];
+const studyPace = () => +(S.pace || 12);
 const isZero = (T, tid) => !!T.zero && T.zero.includes(tid);
 // Sidebar order, used for Previous / Next.
 const sideOrder = (T) => (T.groupsNew ? trGroups(T).flatMap(([, ids]) => ids).map((tid) => topicById(T, tid)) : T.topics);
@@ -75,7 +89,12 @@ function topicDone(T, st, tid) {
 const CLOUD_PICKS = [["aws", "AWS"], ["azure", "Azure"], ["both", "AWS and Azure"]];
 const cloudPick = () => S.cloudPick || "aws";
 const LEAN_NOTE = "Applying to banks and insurers? Lean Azure. Startups and mid-size tech? Lean AWS.";
-const TIMELINE_NOTE = "8 weeks gets you to cloud-practitioner level. Interview-ready for a cloud engineer role typically takes several months of hands-on labs, Linux, and scripting.";
+// Honest expectations, computed from the plan and the learner's pace.
+function timelineNote() {
+  const T = TRACKS.cloud, hours = T.phases.reduce((n, ph) => n + phaseHours(ph), 0), weeks = Math.round(hours / studyPace());
+  const saa = T.phases.slice(0, T.phases.findIndex((ph) => ph.id === "saa") + 1).reduce((n, ph) => n + phaseHours(ph), 0);
+  return `The full plan is about ${hours} hours: roughly ${weeks} weeks at ${studyPace()} hours a week, for five AWS certifications. You can start applying for junior cloud roles after Solutions Architect – Associate, about ${Math.round(saa / studyPace())} weeks in; employers will also want to see your labs and projects, not only the certificates.`;
+}
 // The track's one-line description, naming the cloud you follow.
 const trTagline = (T) => T.id !== "cloud" || cloudPick() === "both" ? T.tagline
   : cloudPick() === "aws" ? "AWS for interviews, hands-on labs and certifications, with the Azure names alongside" : "Azure for interviews, hands-on labs and certifications, with the AWS names alongside";
@@ -197,7 +216,7 @@ function homeView() {
         <p>Cloud engineering prep, following ${esc(pickName)}. ${beginner() ? "New to IT? Start from zero: five plain-language lessons, then" : "Work through"} ${path.length - (beginner() ? T.zero.length : 0)} cloud topics, each finished by answering its checks, plus hands-on labs, AWS certification practice exams, and the skills real Cloud Engineer postings ask for.</p>
         ${pathLine}
         <div class="row" style="margin-top:14px">${primary}</div>
-        <p class="lang-line timeline-note">${TIMELINE_NOTE}</p>
+        <p class="lang-line timeline-note">${timelineNote()}</p>
       </div>
     </section>
     <details class="home-more" ${moreOpen ? "open" : ""}><summary>More: your progress, the ${weeks.length}-week plan and certifications</summary>
@@ -215,8 +234,8 @@ function homeView() {
           <tr><td>Sat</td><td>AWS practice exam or a weak-domain drill (60 min)</td></tr>
           <tr><td>Sun</td><td>Light review: glossary, flashcards, plan the week</td></tr></table>
         <p class="muted">Applying to banks and insurers? Lean Azure. Startups and mid-size tech? Lean AWS. Both value hands-on labs you can talk about.</p></div>
-      <div class="card"><div class="section-head"><h3>Your ${weeks.length} weeks</h3><button class="btn small ghost" data-trgo="cloud|roadmap|">Roadmap &rarr;</button></div><div class="list">
-        ${weeks.map((w) => `<div class="li"><div><span class="t">Week ${w.n}</span><div class="muted">${esc(w.title)}</div></div>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}</div>`).join("")}
+      <div class="card"><div class="section-head"><h3>Your plan: ${weeks.length} weeks, ${T.phases.length} phases</h3><button class="btn small ghost" data-trgo="cloud|roadmap|">Roadmap &rarr;</button></div><div class="list">
+        ${T.phases.map((ph) => { const ws = phaseWeeks(T, ph), now = wk && ws.some((w) => w.n === wk); return `<div class="li"><div><span class="t">${esc(ph.name)}</span><div class="muted">Weeks ${ws[0].n}–${ws[ws.length - 1].n}${ph.exam ? ` · exam ${esc(ph.exam)}` : ""}</div></div>${now ? '<span class="badge accent">You are here</span>' : ""}</div>`; }).join("")}
       </div>${s.start ? "" : `<p class="muted">Start the plan from the track card to track your current week.</p>`}</div>
     </div></details>`;
 }
@@ -240,6 +259,7 @@ function trackView(id, sub) {
     case "quiz": return trQuiz(T, st);
     case "labs": return trLabs(T, st);
     case "certs": return trCerts(T, st);
+    case "othercerts": return T.otherCerts ? trOtherCerts(T, st) : trOverview(T, st);
     case "ibm": return ibmView(T, st);
     default: return trOverview(T, st);
   }
@@ -293,15 +313,32 @@ function trOverview(T, st) {
 
 function trRoadmap(T, st) {
   const wk = trackWeek(T.id), weeks = trWeeks(T);
-  return pageHead(`${esc(T.name)} roadmap`, `${weeks.length} weeks${beginner() ? ", starting with Cloud from zero" : ""}. ${st.start ? `Started ${st.start}; change the date in Settings.` : "Start the plan from the Overview to track your current week."}`) +
-    `<p class="callout timeline-note" style="margin-bottom:var(--gap)">${TIMELINE_NOTE}</p>` +
-    weeks.map((w) => {
-      const done = w.topics.filter((t) => topicDone(T, st, t)).length + w.labs.filter((l) => labDone(T.id, T.labs.find((x) => x.id === l))).length, total = w.topics.length + w.labs.length;
-      return `<details class="card week ${w.n === wk ? "current" : ""}" ${w.n === wk || (!wk && w.n === 1) ? "open" : ""}>
-        <summary><span style="flex:1">Week ${w.n} · ${esc(w.title)}</span>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}<span class="muted">${total ? `${done}/${total}` : "review"}</span></summary>
-        <p class="muted">${esc(w.goal)}</p>
-        <div class="list">${w.topics.map((t) => topicRow(T, st, t)).join("")}${w.labs.map((l) => labRow(T, T.labs.find((x) => x.id === l))).join("")}
-          ${!total ? `<div class="li"><span>Take full quizzes for your target exam and drill the question bank.</span><div class="row"><button class="btn small" data-trgo="${T.id}|quiz|">Quiz</button><button class="btn small" data-trgo="${T.id}|questions|">Questions</button></div></div>` : ""}</div></details>`;
+  const head = pageHead(`${esc(T.name)} roadmap`, `${weeks.length} weeks${T.phases ? ` in ${T.phases.length} phases` : ""}${beginner() ? ", starting with Cloud from zero" : ""}. ${st.start ? `Started ${st.start}; change the date in Settings.` : "Start the plan from the Overview to track your current week."}`);
+  const week = (w) => {
+    const done = w.topics.filter((t) => topicDone(T, st, t)).length + w.labs.filter((l) => labDone(T.id, T.labs.find((x) => x.id === l))).length, total = w.topics.length + w.labs.length;
+    return `<details class="card week ${w.n === wk ? "current" : ""}" ${w.n === wk || (!wk && w.n === 1) ? "open" : ""}>
+      <summary><span style="flex:1">Week ${w.n} · ${esc(w.title)}</span>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}${w.exam ? '<span class="badge plain">Exam</span>' : ""}<span class="muted">${total ? `${done}/${total}` : w.todo ? "coming" : "review"}</span></summary>
+      <p class="muted">${esc(w.goal)}</p>
+      <div class="list">${w.topics.map((t) => topicRow(T, st, t)).join("")}${w.labs.map((l) => labRow(T, T.labs.find((x) => x.id === l))).join("")}
+        ${w.todo ? `<div class="li"><span class="muted">Lessons for this week are still being written (${esc(w.todo)}). Until then, use the exam guide on the certification's official page.</span><button class="btn small" data-trgo="${T.id}|certs|">Certs</button></div>` : ""}
+        ${!total && !w.todo ? `<div class="li"><span>Take full practice exams in AWS Certs, then drill the quiz and question bank on your weak areas.</span><div class="row"><button class="btn small" data-track-go="aws">AWS Certs</button><button class="btn small" data-trgo="${T.id}|quiz|">Quiz</button></div></div>` : ""}</div></details>`;
+  };
+  if (!T.phases) return head + weeks.map(week).join("");
+  // Each phase: its goal, hours, how long it takes at your pace, and (once the plan is started) when its exam falls.
+  let before = 0;
+  return head + `<div class="card pace-card"><div class="setting"><div><b>Your pace</b><div class="muted">Weeks are sized for ${T.pace} hours of study. Pick what you can really do; the calendar stretches or shortens to match.</div></div>
+      <div class="seg">${PACES.map(([v, l]) => `<button data-pace="${v}" class="${String(studyPace()) === v ? "on" : ""}">${l} / week</button>`).join("")}</div></div>
+      <p class="callout timeline-note" style="margin:10px 0 0">${timelineNote()}</p></div>` +
+    T.phases.map((ph, k) => {
+      const ws = phaseWeeks(T, ph), hours = phaseHours(ph), first = ws[0].n, last = ws[ws.length - 1].n;
+      const calWeeks = Math.round(hours / studyPace()), endCal = Math.round((before + hours) / studyPace());
+      before += hours;
+      const cert = T.certs.find((c) => c.code === ph.exam);
+      return `<section class="phase"><div class="phase-head"><div><div class="label">Phase ${k + 1} · plan weeks ${first}–${last}</div><h3>${esc(ph.name)}</h3></div>
+          ${ph.exam ? `<span class="badge accent">Exam: ${esc(ph.exam)}</span>` : ""}</div>
+        <p class="muted">${esc(ph.goal)}</p>
+        <p class="phase-meta">About ${hours} hours: ${calWeeks} week${calWeeks === 1 ? "" : "s"} at ${studyPace()} h/week.${st.start && ph.exam ? ` Target exam date: around <b>${esc(addDays(st.start, endCal * 7))}</b>.` : ""}${cert && cert.note ? ` <span class="muted">${esc(cert.note)}</span>` : ""}</p>
+        ${ws.map(week).join("")}</section>`;
     }).join("");
 }
 
@@ -386,7 +423,7 @@ function trEarnedTopic(T, st, tid) {
   if (isZero(T, tid)) {
     const k = T.zero.indexOf(tid), nx = T.zero[k + 1] ? topicById(T, T.zero[k + 1]) : order.find((x) => !isZero(T, x.id));
     pos = `<p class="lesson-pos">Lesson ${k + 1} of ${T.zero.length} in Cloud from zero. Next: <button class="link-btn inline-link" data-trsel="${id}|${nx.id}">${esc(T.zero[k + 1] ? nx.title : topicLabel(T, nx))}</button></p>
-      <p class="gap-note">Cloud engineer interviews often test Linux and scripting (Bash or Python). These are not covered in depth yet. <a class="inline-link" href="TODO-content.md" target="_blank" rel="noopener">See the list of planned lessons</a>.</p>`;
+      <p class="gap-note">Cloud engineer interviews often test Linux and scripting (Bash or Python). After Cloud from zero, your path covers them in <button class="link-btn inline-link" data-trsel="${id}|linux">Linux command line essentials</button>, <button class="link-btn inline-link" data-trsel="${id}|bash">Bash scripting basics</button> and <button class="link-btn inline-link" data-trsel="${id}|python">Python for cloud automation</button>.</p>`;
   }
   const status = done ? `<span class="badge done">Complete</span> You answered all ${checks.length} checks correctly.`
     : `<span class="badge">To do</span> To complete this ${isZero(T, tid) ? "lesson" : "topic"}, answer the ${checks.length} checks at the end correctly (${right}/${checks.length} so far).`
@@ -536,21 +573,33 @@ function trLabs(T, st) {
 }
 
 // ---------------- certs ----------------
+// One certification card: what it covers, facts, the lessons that teach it, your status, and links.
+function certCard(T, st, c) {
+  const id = T.id, s = st.certs[c.id] || {}, exam = AWS_EXAMS.find((x) => x.code === c.code);
+  return `<div class="card cert"><div class="section-head"><span class="badge accent">${esc(c.provider)} · ${esc(c.level)}</span><b class="cert-code">${esc(c.code)}</b></div>
+    <h3 style="margin-top:6px">${esc(c.name)}</h3><p class="muted">${esc(c.why)}</p>
+    ${c.facts ? `<p class="cert-facts">${esc(c.facts)}</p>` : ""}${c.note ? `<p class="cert-note">${esc(c.note)}</p>` : ""}
+    ${c.assessed ? `<div class="label" style="margin-top:10px">What the exam assesses</div><ul class="cert-list">${c.assessed.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
+    ${c.after ? `<p class="muted"><b>When to take it:</b> ${esc(c.after)}</p>` : ""}
+    <div class="label" style="margin-top:10px">Covered in Learn</div><div>${c.topics.filter((tid) => topicById(T, tid)).map((tid) => `<button class="tag tag-btn" ${goLearn(id, tid)}>${esc(topicById(T, tid).title)}</button>`).join("")}</div>
+    <div class="row" style="margin-top:12px"><select data-trcert="${id}|${c.id}" aria-label="Status for ${esc(c.code)}">${CERT_STATUSES.map((v) => `<option ${v === (s.status || "Not planned") ? "selected" : ""}>${v}</option>`).join("")}</select>
+      <input type="date" data-trcertdate="${id}|${c.id}" value="${esc(s.date || "")}" title="Exam date"></div>
+    <div class="row" style="margin-top:12px">${exam ? `<button class="btn small primary" data-awsgo="${exam.id}">Open exam prep &rarr;</button>` : ""}
+      ${c.tag && T.quiz.some((q) => q.tags.includes(c.tag)) ? `<button class="btn small ${exam ? "" : "primary"}" data-tqtag="${id}|${c.tag}">Practice questions</button>` : ""}
+      <a class="btn small ghost" href="${c.link}" target="_blank" rel="noopener">Official page &nearr;</a></div></div>`;
+}
 function trCerts(T, st) {
-  const id = T.id;
-  return pageHead("Certifications", "Pick one that matches your target employers. Exam codes and content change, so always confirm details on the official page before booking.") +
-    `<div class="track-grid">${T.certs.map((c) => {
-      const s = st.certs[c.id] || {};
-      return `<div class="card cert"><div class="section-head"><span class="badge accent">${esc(c.provider)} · ${esc(c.level)}</span><b class="cert-code">${esc(c.code)}</b></div>
-        <h3 style="margin-top:6px">${esc(c.name)}</h3><p class="muted">${esc(c.why)}</p>
-        <div class="label" style="margin-top:10px">Covered in Learn</div><div>${c.topics.map((tid) => `<button class="tag tag-btn" ${goLearn(id, tid)}>${esc(topicById(T, tid).title)}</button>`).join("")}</div>
-        <div class="row" style="margin-top:12px"><select data-trcert="${id}|${c.id}">${CERT_STATUSES.map((v) => `<option ${v === (s.status || "Not planned") ? "selected" : ""}>${v}</option>`).join("")}</select>
-          <input type="date" data-trcertdate="${id}|${c.id}" value="${esc(s.date || "")}" title="Exam date"></div>
-        <div class="row" style="margin-top:12px">${AWS_EXAMS.some((x) => x.code === c.code) ? `<button class="btn small primary" data-awsgo="${AWS_EXAMS.find((x) => x.code === c.code).id}">Open exam prep &rarr;</button>` : ""}
-          ${T.quiz.some((q) => q.tags.includes(c.tag)) ? `<button class="btn small ${AWS_EXAMS.some((x) => x.code === c.code) ? "" : "primary"}" data-tqtag="${id}|${c.tag}">Practice questions</button>` : ""}
-          <a class="btn small ghost" href="${c.link}" target="_blank" rel="noopener">Official page &nearr;</a></div></div>`;
-    }).join("")}</div>
+  return pageHead("Certifications", T.phases
+    ? "The AWS certifications on your plan, in the order you'll take them. Exam codes and content change, so always confirm details on the official page before booking."
+    : "Pick one that matches your target employers. Exam codes and content change, so always confirm details on the official page before booking.") +
+    `<div class="track-grid">${T.certs.map((c) => certCard(T, st, c)).join("")}</div>
+    ${T.otherCerts ? `<div class="card row between"><span class="muted">Azure and Google Cloud certifications are on their own tab.</span><button class="btn small" data-trgo="${T.id}|othercerts|">Other certifications &rarr;</button></div>` : ""}
     <div class="card"><h3>Full certification courses</h3>${T.earned ? COURSES_NOTE : ""}${vids(T.videos.courses)}</div>`;
+}
+function trOtherCerts(T, st) {
+  const by = (p) => T.otherCerts.filter((c) => c.provider === p);
+  return pageHead("Other certifications", "Azure and Google Cloud, for when an employer asks for them. They're not part of your AWS plan, but most of what you learn carries over; each card says when it makes sense. Details checked October 2026: confirm on the official page before booking.") +
+    ["Azure", "Google Cloud"].map((p) => `<h3 class="cert-group">${esc(p)}</h3><div class="track-grid">${by(p).map((c) => certCard(T, st, c)).join("")}</div>`).join("");
 }
 
 // ---------------- running AI exercises ----------------
@@ -605,6 +654,7 @@ document.addEventListener("click", (e) => {
   }
   if ((b = el("[data-trcheckretry]"))) { const [id, qid] = b.dataset.trcheckretry.split("|"); delete trState(id).pick[qid]; save(); return rerender(); }
   if ((b = el("[data-level]"))) { S.level = b.dataset.level; save(); return rerender(); }
+  if ((b = el("[data-pace]"))) { S.pace = +b.dataset.pace; save(); return rerender(); }
   if ((b = el("[data-cloudpick]"))) { S.cloudPick = b.dataset.cloudpick; save(); return rerender(); }
   if ((b = el("[data-trq]"))) { views._trq = views._trq || {}; views._trq[b.dataset.trq] = !views._trq[b.dataset.trq]; return rerender(); }
   if ((b = el("[data-trshow]"))) { views._tra = views._tra || {}; views._tra[b.dataset.trshow] = !views._tra[b.dataset.trshow]; return rerender(); }

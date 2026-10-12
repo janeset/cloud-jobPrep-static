@@ -162,6 +162,8 @@ const views = {
           ${seg("data-level", S.level || "new", LEVELS)}</div>
         <div class="setting"><div><b>Which cloud are you following?</b><div class="muted">Lessons lead with this provider's service names and show the other as "on Azure" / "on AWS". Banks and insurers lean Azure; startups lean AWS.</div></div>
           ${pickSeg()}</div>
+        <div class="setting"><div><b>Hours a week</b><div class="muted">How much you can study. The plan's weeks are sized for ${T.pace} hours; your target exam dates move to match.</div></div>
+          <div class="seg">${PACES.map(([v, l]) => `<button data-pace="${v}" class="${String(studyPace()) === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
         <div class="setting"><div><b>${esc(T.name)} start date</b><div class="muted">${st.start ? `Week ${trackWeek("cloud")} of ${trWeeks(T).length}.` : "Not started. Pick a date or start it from the track's Overview."}</div></div>
           <input type="date" data-trstartdate="cloud" value="${st.start || ""}"></div>
       </div>

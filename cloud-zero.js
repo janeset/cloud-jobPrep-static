@@ -1,7 +1,7 @@
 // "Cloud from zero": the beginner track, for people with no IT background. Five short lessons in
 // plain language, each with a worked example, a guided task and checks. The checks are ordinary
 // quiz questions (topic = the lesson id), so a lesson is complete when they're all answered right.
-// Also sets the beginner path order (groupsNew, weeksNew) used when Home's level is "new".
+// Also sets the lesson order for each path (groups, and groupsNew when Home's level is "new").
 // Merged into CLOUD by extendTrack (tracks.js). body is trusted HTML (written here).
 
 const ZERO_IDS = ["zero-computers", "zero-internet", "zero-cli", "zero-cloud", "zero-accounts"];
@@ -249,6 +249,7 @@ note.txt`,
   groups: [
     ["Cloud from zero", ZERO_IDS],
     ["Foundations", ["fundamentals", "iam", "security", "governance"]],
+    ["Hands-on skills", ["linux", "bash", "python", "terraform"]],
     ["Compute", ["compute", "containers", "kubernetes", "serverless"]],
     ["Data", ["storage", "databases", "data"]],
     ["Networking & integration", ["networking", "messaging"]],
@@ -267,24 +268,14 @@ CLOUD.aliases = {
   cli: "zero-cli", terminal: "zero-cli", "command-line": "zero-cli", cloud: "zero-cloud", "what-is-cloud": "zero-cloud", accounts: "zero-accounts", passwords: "zero-accounts", mfa: "zero-accounts",
   identity: "iam", secrets: "security", vm: "compute", vms: "compute", ec2: "compute", docker: "containers", lambda: "serverless", functions: "serverless",
   s3: "storage", blob: "storage", db: "databases", database: "databases", sql: "databases", network: "networking", vpc: "networking", vnet: "networking",
-  queues: "messaging", events: "messaging", iac: "devops", terraform: "devops", cicd: "devops", "ci-cd": "devops", monitoring: "operations", observability: "operations",
+  queues: "messaging", events: "messaging", iac: "devops", cicd: "devops", hcl: "terraform", shell: "bash", scripting: "bash", boto3: "python", ssh: "linux", "ci-cd": "devops", monitoring: "operations", observability: "operations",
   cost: "operations", dr: "architecture", "disaster-recovery": "architecture", analytics: "data", "landing-zone": "governance", migration: "governance",
 };
 CLOUD.groupsNew = [
   ["Cloud from zero", ZERO_IDS],
-  ["The basics", ["fundamentals", "iam", "networking", "security"]],
-  ["Storing and running things", ["storage", "compute", "databases"]],
-  ["Modern apps", ["containers", "serverless", "messaging", "kubernetes"]],
-  ["Running it well", ["devops", "operations"]],
-  ["Going further", ["data", "architecture", "governance"]],
+  ["Foundations", ["fundamentals", "linux", "bash", "iam"]],
+  ["Core AWS services", ["networking", "security", "storage", "compute", "databases", "operations"]],
+  ["Building on AWS", ["containers", "serverless", "messaging", "python", "terraform", "kubernetes"]],
+  ["Architecture & delivery", ["architecture", "data", "governance", "devops"]],
 ];
-CLOUD.weeksNew = [
-  { n: 1, title: "Cloud from zero", topics: ZERO_IDS, labs: [], goal: "Understand computers, servers, the internet and the command line, and open a cloud account safely with MFA and a budget alert." },
-  { n: 2, title: "Cloud basics, identity & networking", topics: ["fundamentals", "iam", "networking"], labs: [], goal: "Explain regions, shared responsibility and least privilege, and sketch a private network with public and private subnets." },
-  { n: 3, title: "Security & storage", topics: ["security", "storage"], labs: ["staticsite"], goal: "Keep secrets out of code, and host a static website on object storage behind a CDN with HTTPS." },
-  { n: 4, title: "Compute & databases", topics: ["compute", "databases"], labs: [], goal: "Choose a server size, explain load balancing and autoscaling, and pick the right kind of database." },
-  { n: 5, title: "Containers, serverless & messaging", topics: ["containers", "serverless", "messaging"], labs: ["serverlessapi"], goal: "Package an app in a container, and build a small serverless API." },
-  { n: 6, title: "Kubernetes, IaC & CI/CD", topics: ["kubernetes", "devops"], labs: ["containercicd", "terraformnet"], goal: "Explain pods and deployments, and deploy automatically from GitHub with infrastructure in code." },
-  { n: 7, title: "Operations & data", topics: ["operations", "data"], labs: ["observability"], goal: "Add monitoring, alerts and budgets, and describe a simple data lake." },
-  { n: 8, title: "Architecture, governance & interview sprint", topics: ["architecture", "governance"], labs: [], goal: "Pick a disaster-recovery strategy, describe a landing zone, then drill the question bank and a practice exam." },
-];
+// The plan (phases and weeks) is in cloud-plan.js.
