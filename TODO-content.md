@@ -11,11 +11,11 @@ aws.amazon.com on 2026-10-12; DVA-C03 and SAP-C03 exam guides are due on 2026-10
 - [x] Terraform basics
 
 ## Stage 2: gaps for Cloud Practitioner and Solutions Architect – Associate
-- [ ] Billing, pricing and support plans; the Cloud Adoption Framework (CLF)
-- [ ] SAA deep dive: networking (VPC endpoints, Transit Gateway, Route 53 routing, hybrid)
-- [ ] SAA deep dive: storage, databases and caching (S3 classes, EFS / FSx, Aurora, DynamoDB design, ElastiCache, CloudFront)
-- [ ] SAA deep dive: security services (KMS, Secrets Manager, WAF, Shield, Cognito, cross-account access)
-- [ ] More CLF and SAA practice questions
+- [x] Billing, pricing and support plans; the Cloud Adoption Framework (CLF)
+- [x] SAA deep dive: networking (VPC endpoints, Transit Gateway, Route 53 routing, hybrid)
+- [x] SAA deep dive: storage, databases and caching (S3 classes, EFS / FSx, Aurora, DynamoDB design, ElastiCache, CloudFront)
+- [x] SAA deep dive: security services (KMS, Secrets Manager, WAF, Shield, Cognito, cross-account access)
+- [x] More CLF and SAA practice questions
 
 ## Stage 3: AI Practitioner (AIF-C01) and Developer – Associate (DVA-C03)
 - [ ] AIF exam page in AWS Certs (domains and weightings from the official exam guide)

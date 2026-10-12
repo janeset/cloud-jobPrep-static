@@ -253,7 +253,8 @@ note.txt`,
     ["Compute", ["compute", "containers", "kubernetes", "serverless"]],
     ["Data", ["storage", "databases", "data"]],
     ["Networking & integration", ["networking", "messaging"]],
-    ["Operations & architecture", ["devops", "operations", "architecture"]],
+    ["Operations & architecture", ["devops", "operations", "billing", "architecture"]],
+    ["Solutions Architect deep dives", ["netdeep", "datadeep", "secdeep"]],
   ],
 });
 
@@ -269,13 +270,15 @@ CLOUD.aliases = {
   identity: "iam", secrets: "security", vm: "compute", vms: "compute", ec2: "compute", docker: "containers", lambda: "serverless", functions: "serverless",
   s3: "storage", blob: "storage", db: "databases", database: "databases", sql: "databases", network: "networking", vpc: "networking", vnet: "networking",
   queues: "messaging", events: "messaging", iac: "devops", cicd: "devops", hcl: "terraform", shell: "bash", scripting: "bash", boto3: "python", ssh: "linux", "ci-cd": "devops", monitoring: "operations", observability: "operations",
-  cost: "operations", dr: "architecture", "disaster-recovery": "architecture", analytics: "data", "landing-zone": "governance", migration: "governance",
+  cost: "billing", pricing: "billing", support: "billing", caf: "billing", dr: "architecture", "disaster-recovery": "architecture", analytics: "data", "landing-zone": "governance", migration: "governance",
 };
 CLOUD.groupsNew = [
   ["Cloud from zero", ZERO_IDS],
   ["Foundations", ["fundamentals", "linux", "bash", "iam"]],
-  ["Core AWS services", ["networking", "security", "storage", "compute", "databases", "operations"]],
+  ["Core AWS services", ["networking", "security", "storage", "compute", "databases", "operations", "billing"]],
   ["Building on AWS", ["containers", "serverless", "messaging", "python", "terraform", "kubernetes"]],
-  ["Architecture & delivery", ["architecture", "data", "governance", "devops"]],
+  ["Architecture", ["architecture", "data", "governance"]],
+  ["Solutions Architect deep dives", ["netdeep", "datadeep", "secdeep"]],
+  ["Delivery", ["devops"]],
 ];
 // The plan (phases and weeks) is in cloud-plan.js.
