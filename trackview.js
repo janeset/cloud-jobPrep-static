@@ -285,7 +285,7 @@ function trOverview(T, st) {
       <div style="position:relative;z-index:1">
         <div class="eyebrow">${wk ? `Week ${wk} of ${weeks.length}` : "Plan not started yet"}</div>
         <h1>${esc(T.name)}</h1>
-        <p>${esc(trTagline(T))}. ${wk ? `This week: <b style="color:var(--text)">${esc(w.title)}</b>.` : `An ${weeks.length}-week plan, about 4-6 hours a week.`} A topic is complete when you've answered all its checks correctly.</p>
+        <p>${esc(trTagline(T))}. ${wk ? `This week: <b style="color:var(--text)">${esc(w.title)}</b>.` : `${/^8|^1[18]$/.test(weeks.length) ? "An" : "A"} ${weeks.length}-week plan, ${T.pace ? `each week sized for ${T.pace} hours of study` : "about 4-6 hours a week"}.`} A topic is complete when you've answered all its checks correctly.</p>
         <div class="row" style="margin-top:14px">
           ${nextTopic ? `<button class="btn primary" ${goLearn(id, nextTopic.id)}>${p.read ? "Continue" : "Start"}: ${esc(topicLabel(T, nextTopic))} &rarr;</button>` : `<button class="btn primary" data-trgo="${id}|quiz|">Take a quiz &rarr;</button>`}
           ${st.start ? "" : `<button class="btn" data-trstart="${id}">Start the ${weeks.length}-week plan</button>`}
