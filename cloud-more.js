@@ -6,18 +6,30 @@ extendTrack(CLOUD, {
   topics: [
     {
       id: "kubernetes", title: "Kubernetes essentials", short: "K8s",
-      body: `<p>Kubernetes (K8s) runs containers across a cluster of machines and keeps them in the state you declare. Interviews for platform, DevOps and backend roles expect the core vocabulary.</p>
+      terms: [["Container / image", "An app packaged with everything it needs / the file it starts from.", "containers"],
+        ["Kubernetes (K8s)", "An open-source system that runs containers across many machines and keeps them running the way you described."],
+        ["Cluster / node", "The group of machines Kubernetes manages / one machine (usually a VM) in it."],
+        ["Control plane", "The \"brain\" of the cluster that stores the desired state and decides where things run."],
+        ["Declare / desired state", "You write down what you want (\"3 copies of the API\"), and Kubernetes keeps making reality match."],
+        ["Manifest / YAML", "The file that declares what you want; YAML is the indented text format it's written in."],
+        ["Replica", "One identical copy of a pod."],
+        ["Rolling update", "Replacing old copies with new ones a few at a time, so the app never goes down."],
+        ["Probe", "A regular check Kubernetes runs against a container, such as calling /health."],
+        ["Base64", "A way of writing data as plain letters and numbers. It's an encoding, not encryption: anyone can decode it."],
+        ["kubectl", "The command-line tool for talking to a Kubernetes cluster."]],
+      body: `<p>In plain words: Kubernetes is a robot manager for containers. You tell it "run 3 copies of my API, each with this much memory, and keep them healthy", and it decides which machines to use, restarts copies that crash, and replaces them gradually when you ship a new version. If containers are new, read <button class="link-btn inline-link" data-trsel="cloud|containers">Containers &amp; Kubernetes</button> first. Interviews for platform, DevOps and backend roles expect this vocabulary.</p>
         <ul>
-          <li><b>Cluster:</b> a <b>control plane</b> (API server, scheduler, etcd state store) plus <b>worker nodes</b> that run your containers. EKS and AKS manage the control plane for you.</li>
-          <li><b>Pod:</b> the smallest unit, one or more containers sharing a network address. Pods are disposable; never rely on a particular pod staying alive.</li>
-          <li><b>Deployment:</b> declares how many replicas of a pod template to run and performs rolling updates and rollbacks.</li>
-          <li><b>Service:</b> a stable virtual IP/DNS name that load-balances to matching pods (ClusterIP inside the cluster, LoadBalancer to expose it). <b>Ingress</b> routes HTTP by host/path into services.</li>
-          <li><b>ConfigMap / Secret:</b> configuration and sensitive values injected as environment variables or files. Base64 isn't encryption: pull real secrets from a vault.</li>
-          <li><b>Probes:</b> <i>readiness</i> (should this pod get traffic?) and <i>liveness</i> (should it be restarted?).</li>
-          <li><b>Requests and limits</b> reserve and cap CPU/memory; the scheduler places pods by requests. The <b>Horizontal Pod Autoscaler</b> adds replicas when metrics such as CPU exceed a target.</li>
-          <li><b>Namespaces</b> separate teams/environments; <b>RBAC</b> controls who can do what; <b>Helm</b> packages manifests as reusable charts.</li></ul>`,
+          <li><b>Cluster:</b> a <b>control plane</b> (the API server you talk to, the scheduler that places work, and etcd, its database) plus <b>worker nodes</b> that run your containers. [[Amazon EKS|AKS]] runs the control plane for you.</li>
+          <li><b>Pod:</b> the smallest unit Kubernetes runs: one or more containers sharing a network address. Pods are disposable; never rely on one particular pod staying alive.</li>
+          <li><b>Deployment:</b> says how many replicas of a pod to run, and performs rolling updates and rollbacks.</li>
+          <li><b>Service:</b> a stable name and address that spreads traffic across the matching pods, even as pods come and go (ClusterIP for inside the cluster, LoadBalancer to expose it outside). <b>Ingress</b> routes web requests by host name or path to services.</li>
+          <li><b>ConfigMap / Secret:</b> settings and sensitive values handed to containers as environment variables or files. Kubernetes Secrets are only base64-encoded, not encrypted, so pull real secrets from a vault ([[Secrets Manager|Key Vault]]).</li>
+          <li><b>Probes:</b> <i>readiness</i> (is this pod ready to receive traffic?) and <i>liveness</i> (is it stuck and should be restarted?).</li>
+          <li><b>Requests and limits</b> reserve and cap CPU and memory for each container; the scheduler places pods using the requests. The <b>Horizontal Pod Autoscaler</b> adds replicas when a metric such as CPU goes above a target.</li>
+          <li><b>Namespaces</b> separate teams or environments in one cluster; <b>RBAC</b> (role-based access control) decides who can do what; <b>Helm</b> packages a set of manifests into a reusable "chart".</li></ul>
+        <p><b>Example:</b> the manifest below declares a Deployment of 3 API pods and a Service in front of them. If a node dies, Kubernetes notices that only 2 pods are running and starts a third on another node. When you change the image tag to a new version and apply the file again, it replaces the pods one by one, sending traffic to each new pod only after its readiness probe passes.</p>`,
       map: [["Managed Kubernetes", "Amazon EKS", "Azure Kubernetes Service (AKS)"], ["Container registry", "Amazon ECR", "Azure Container Registry"], ["Pod identity to cloud APIs", "EKS Pod Identity / IRSA", "Microsoft Entra Workload ID"], ["Cluster autoscaling of nodes", "Cluster Autoscaler / Karpenter", "AKS cluster autoscaler"], ["HTTP ingress to the cluster", "AWS Load Balancer Controller (ALB)", "Application Gateway for Containers / ingress controller"]],
-      code: [{ label: "A Deployment and a Service (YAML)", code: `apiVersion: apps/v1
+      code: [{ label: "A Deployment and a Service (YAML)", note: "A Kubernetes manifest in YAML (indentation matters). The first part asks for 3 replicas of the api container with CPU and memory limits and a readiness probe on /health; the part after --- is a Service that sends port 80 traffic to those pods.", code: `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api
@@ -45,7 +57,7 @@ metadata:
   name: api
 spec:
   selector: { app: api }
-  ports: [{ port: 80, targetPort: 8000 }]` }, { label: "Everyday kubectl", code: `kubectl apply -f api.yaml                 # create or update from the manifest
+  ports: [{ port: 80, targetPort: 8000 }]` }, { label: "Everyday kubectl", note: "The commands you'll type most. Each line is one command; the text after # explains it.", code: `kubectl apply -f api.yaml                 # create or update from the manifest
 kubectl get pods -l app=api               # list pods with a label
 kubectl describe pod <pod-name>           # events: why is it Pending / CrashLoopBackOff?
 kubectl logs deploy/api --tail=50         # recent logs
@@ -66,6 +78,18 @@ assert parse_memory("1Gi") == 1024 ** 3
 assert parse_memory("500M") == 500_000_000
 assert parse_memory("128Ki") == 131072
 assert parse_memory("1000") == 1000`,
+        hint: "CPU: if the text ends with 'm', drop the m, turn the rest into a number and divide by 1000; otherwise use float(q). Memory: check the two-letter suffixes (Ki, Mi, Gi) before the one-letter ones (K, M, G), then multiply the number by that suffix's size.",
+        solution: `def parse_cpu(q):
+    if q.endswith("m"):
+        return int(q[:-1]) / 1000
+    return float(q)
+
+def parse_memory(q):
+    sizes = {"Ki": 1024, "Mi": 1024 ** 2, "Gi": 1024 ** 3, "K": 1000, "M": 1000 ** 2, "G": 1000 ** 3}
+    for suffix in ["Ki", "Mi", "Gi", "K", "M", "G"]:
+        if q.endswith(suffix):
+            return int(q[:-len(suffix)]) * sizes[suffix]
+    return int(q)`,
       }, {
         prompt: "Write hpa_desired(current, metric, target, min_r, max_r): the Horizontal Pod Autoscaler's rule. desired = ceil(current * metric / target), clamped to [min_r, max_r]. If metric/target is within 10% of 1.0 (the default tolerance), keep current.",
         starter: `import math
@@ -77,6 +101,16 @@ def hpa_desired(current, metric, target, min_r, max_r):
 assert hpa_desired(4, 62, 60, 1, 10) == 4, "within tolerance: no change"
 assert hpa_desired(10, 200, 50, 1, 12) == 12, "clamp to max"
 assert hpa_desired(5, 10, 60, 2, 10) == 2, "clamp to min"`,
+        hint: "Work out ratio = metric / target first. If abs(ratio - 1) <= 0.1, keep current; otherwise use math.ceil(current * ratio). Clamp last, with max(min_r, min(max_r, desired)).",
+        solution: `import math
+
+def hpa_desired(current, metric, target, min_r, max_r):
+    ratio = metric / target
+    if abs(ratio - 1.0) <= 0.1:
+        desired = current
+    else:
+        desired = math.ceil(current * ratio)
+    return max(min_r, min(max_r, desired))`,
       }],
       cards: [
         ["A pod is stuck in CrashLoopBackOff. How do you debug it?", "kubectl describe pod (events, exit codes), kubectl logs --previous (logs of the crashed container), then check config/secrets, probes that kill it too early, and resource limits (OOMKilled)."],
@@ -86,18 +120,30 @@ assert hpa_desired(5, 10, 60, 2, 10) == 2, "clamp to min"`,
     },
     {
       id: "architecture", title: "Architecture patterns & disaster recovery", short: "Arch",
-      body: `<ul>
-          <li><b>Monolith vs microservices:</b> start with a well-structured (modular) monolith; split into services when teams, scaling needs or release cadence demand it. Microservices add network calls, distributed data and operational cost.</li>
-          <li><b>Common shapes:</b> 3-tier web app (LB, app, DB), event-driven (services react to events on a bus), serverless (functions + managed services), and data pipelines.</li>
-          <li><b>Reliability patterns:</b> redundancy across AZs, timeouts and retries with backoff, circuit breakers, queues to absorb spikes, graceful degradation, idempotent operations.</li>
-          <li><b>Availability math:</b> components in <i>series</i> multiply (two 99.9% services = about 99.8%); <i>redundant</i> copies in parallel fail only if all fail: 1 - (1 - a)<sup>n</sup>.</li>
+      terms: [["Architecture", "The overall shape of a system: which parts there are and how they connect."],
+        ["Monolith / microservices", "One app that does everything / many small apps, each doing one job and talking over the network."],
+        ["3-tier app", "The classic layout: a load balancer, app servers, and a database."],
+        ["Retry with backoff", "Trying a failed call again, waiting a little longer each time."],
+        ["Circuit breaker", "Stopping calls to a failing service for a while, so you fail fast instead of piling up waiting requests."],
+        ["Graceful degradation", "Turning off a non-essential feature (like recommendations) rather than failing the whole page."],
+        ["Availability", "The share of time a service works, such as 99.9% (about 8.8 hours of downtime a year)."],
+        ["SLA", "The availability a provider promises, with credits if it misses.", "fundamentals"],
+        ["Disaster recovery / RPO / RTO", "Getting service back after a big failure / how much data you can lose / how long you can be down.", "fundamentals"],
+        ["Failover", "Switching to the standby copy, here in another region, when the main one fails."]],
+      body: `<p>In plain words: architecture is choosing the shape of a system and planning for things to break. This topic covers the common shapes, the patterns that keep systems up, how to calculate availability, and how to recover when a whole region goes down.</p>
+        <ul>
+          <li><b>Monolith vs microservices:</b> start with a well-organized single app (a "modular monolith"), and split it into services when separate teams, very different scaling needs or release schedules demand it. Microservices add network calls, data spread across services and more to run.</li>
+          <li><b>Common shapes:</b> the 3-tier web app; event-driven (services react to events on a shared bus, see <button class="link-btn inline-link" data-trsel="cloud|messaging">Messaging</button>); serverless (functions plus managed services); and data pipelines.</li>
+          <li><b>Reliability patterns:</b> copies in several availability zones, timeouts, retries with backoff, circuit breakers, queues to absorb spikes, graceful degradation, and idempotent operations.</li>
+          <li><b>Availability math:</b> when a request needs every component (<i>in series</i>), multiply their availabilities: two 99.9% services give about 99.8%. Redundant copies (<i>in parallel</i>) fail only if all fail: 1 - (1 - a)<sup>n</sup>. Compare the result with the SLA you need to offer.</li>
           <li><b>Disaster recovery strategies</b> (cheapest and slowest first):
             <table><tr><th>Strategy</th><th>What runs in the DR region</th><th>RPO / RTO</th></tr>
             <tr><td>Backup &amp; restore</td><td>Only backups</td><td>Hours</td></tr>
             <tr><td>Pilot light</td><td>Data replicated; core infrastructure off or minimal</td><td>Minutes to hours</td></tr>
             <tr><td>Warm standby</td><td>A scaled-down but working copy</td><td>Minutes</td></tr>
             <tr><td>Multi-site active/active</td><td>Full capacity serving traffic in both</td><td>Near zero</td></tr></table></li>
-          <li>Choose by business impact: a bank's payment system justifies warm standby or active/active; an internal reporting tool may be fine with backup &amp; restore. <b>Test failover</b> regularly.</li></ul>`,
+          <li>Choose by business impact: a bank's payment system justifies warm standby or active/active; an internal reporting tool may be fine with backup &amp; restore. <b>Test failover</b> regularly.</li></ul>
+        <p><b>Example:</b> a payments API may lose at most 1 minute of data (RPO) and be down at most 15 minutes (RTO). Backup &amp; restore takes hours, so it's out. A warm standby fits: the database replicates continuously to a second region, a small copy of the app runs there, and DNS health checks switch users over within minutes.</p>`,
       map: [["DNS failover / global routing", "Route 53 health checks", "Traffic Manager / Front Door"], ["Cross-region storage copies", "S3 Cross-Region Replication", "Geo-redundant storage (GRS)"], ["Cross-region database", "Aurora Global Database", "Azure SQL failover groups"], ["Central backups", "AWS Backup", "Azure Backup"], ["DR orchestration for servers", "AWS Elastic Disaster Recovery", "Azure Site Recovery"]],
       exercises: [{
         prompt: "Write serial(avails) and parallel(avails). serial: probability every component is up (product). parallel: probability at least one redundant copy is up: 1 - product of (1 - a).",
@@ -111,6 +157,18 @@ def parallel(avails):
 assert abs(parallel([0.99, 0.99]) - 0.9999) < 1e-9
 assert abs(serial([0.999, 0.999, 0.999]) - 0.997002999) < 1e-9
 assert serial([]) == 1 and parallel([0.5]) == 0.5`,
+        hint: "Start a result at 1 and multiply it by each value in a loop. For parallel, multiply together the chances that each copy is DOWN (1 - a), then subtract that from 1.",
+        solution: `def serial(avails):
+    result = 1
+    for a in avails:
+        result *= a
+    return result
+
+def parallel(avails):
+    all_down = 1
+    for a in avails:
+        all_down *= 1 - a
+    return 1 - all_down`,
       }, {
         prompt: "Write downtime_minutes(percent) returning the allowed downtime per year (365 days) for an availability percentage, e.g. 99.9 -> 525.6 minutes.",
         starter: `def downtime_minutes(percent):
@@ -119,6 +177,9 @@ assert serial([]) == 1 and parallel([0.5]) == 0.5`,
         tests: `assert abs(downtime_minutes(99.9) - 525.6) < 1e-6
 assert abs(downtime_minutes(99.99) - 52.56) < 1e-6
 assert downtime_minutes(100) == 0`,
+        hint: "The fraction of time it's down is (100 - percent) / 100. A year has 365 * 24 * 60 minutes.",
+        solution: `def downtime_minutes(percent):
+    return (100 - percent) / 100 * 365 * 24 * 60`,
       }],
       cards: [
         ["Pilot light vs warm standby?", "Pilot light keeps data replicated with core infrastructure off or minimal, so you must start/scale it during a disaster. Warm standby runs a small working copy that only needs scaling up, so recovery is faster but costs more."],
@@ -128,16 +189,28 @@ assert downtime_minutes(100) == 0`,
     },
     {
       id: "data", title: "Data & analytics", short: "Data",
-      body: `<ul>
-          <li><b>Data lake:</b> raw and processed files in object storage (S3 / Azure Data Lake Storage Gen2), organized in zones such as raw, cleaned and curated.</li>
-          <li><b>Formats:</b> columnar <b>Parquet</b> reads only the columns a query needs and compresses well; CSV/JSON are easy but slow and costly to query at scale.</li>
-          <li><b>Partitioning:</b> folders like <code>sales/year=2026/month=10/</code> let engines skip irrelevant data. Pay-per-scan engines charge by bytes read, so partitioning and Parquet cut cost directly.</li>
-          <li><b>ETL / ELT:</b> AWS Glue / Azure Data Factory move and transform data; many teams transform inside the warehouse with SQL (dbt).</li>
-          <li><b>Query and warehouse:</b> Amazon Athena / serverless SQL query files in place; Redshift, Microsoft Fabric/Synapse or Snowflake serve heavy analytics.</li>
-          <li><b>Streaming:</b> Kinesis / Event Hubs ingest events; Flink or Stream Analytics process them in near real time.</li>
-          <li><b>BI and governance:</b> QuickSight / Power BI (very common at Canadian banks); catalogs and permissions with Glue Data Catalog + Lake Formation / Microsoft Purview.</li></ul>`,
+      terms: [["Analytics", "Answering business questions from lots of data, like \"revenue by store last month\"."],
+        ["Data lake", "A large collection of data files kept in object storage, raw and cleaned.", "storage"],
+        ["CSV / JSON / Parquet", "File formats: CSV is a plain table of text, JSON is structured text, Parquet is a compressed format stored column by column."],
+        ["Columnar", "Storing each column together, so a query that needs 3 columns out of 50 reads only those 3."],
+        ["Partitioning", "Splitting data into folders by a value such as date, so a query can skip the folders it doesn't need."],
+        ["ETL / ELT", "Extract, transform, load: copying data from where it's created, cleaning it, and loading it where it's analysed (ELT loads first, then cleans)."],
+        ["SQL", "The standard language for asking questions of tables of data.", "databases"],
+        ["Data warehouse", "A database built for big reports over lots of history."],
+        ["Streaming", "A continuous flow of events processed as they arrive.", "messaging"],
+        ["BI", "Business intelligence: dashboards and reports for non-technical people."]],
+      body: `<p>In plain words: apps create data all day (sales, clicks, transactions). Analytics copies that data somewhere built for big questions, stores it efficiently, and puts the answers in dashboards. Good file formats and folder layouts make the same question run faster and cost far less.</p>
+        <ul>
+          <li><b>Data lake:</b> raw and processed files in object storage ([[Amazon S3|Azure Data Lake Storage Gen2]]), organized in zones such as raw, cleaned and curated.</li>
+          <li><b>Formats:</b> columnar <b>Parquet</b> reads only the columns a query needs and compresses well; CSV and JSON are easy to make but slow and costly to query at scale.</li>
+          <li><b>Partitioning:</b> folders like <code>sales/year=2026/month=10/</code> let query engines skip data they don't need. Pay-per-scan engines charge by the amount of data read, so partitioning and Parquet cut the cost directly.</li>
+          <li><b>ETL / ELT:</b> [[AWS Glue|Azure Data Factory]] move and transform data; many teams do the transforming inside the warehouse with SQL, using a tool called dbt.</li>
+          <li><b>Query and warehouse:</b> [[Amazon Athena|Synapse serverless SQL or Microsoft Fabric]] runs SQL directly on files in the lake and charges by data scanned; [[Amazon Redshift|Microsoft Fabric or Synapse]] (or Snowflake, on either cloud) serve heavy, repeated analytics.</li>
+          <li><b>Streaming:</b> [[Kinesis|Event Hubs]] takes in events as they happen; tools such as Apache Flink or Azure Stream Analytics process them within seconds.</li>
+          <li><b>BI and governance:</b> [[Amazon QuickSight|Power BI (very common at Canadian banks)]] for dashboards; a data catalog and permissions with [[Glue Data Catalog and Lake Formation|Microsoft Purview]].</li></ul>
+        <p><b>Example:</b> a retailer's tills export a CSV of each day's sales. A nightly job checks and cleans the file and writes it as Parquet into <code>sales/year=2026/month=10/day=05/</code>. An analyst's query for October revenue by store reads only October's folders and only three columns, scanning a few megabytes instead of the whole history, and a Power BI dashboard shows the result every morning.</p>`,
       map: [["Data lake storage", "Amazon S3", "Azure Data Lake Storage Gen2"], ["ETL / pipelines", "AWS Glue", "Azure Data Factory"], ["Query files with SQL", "Amazon Athena", "Synapse serverless SQL / Fabric"], ["Data warehouse", "Amazon Redshift", "Microsoft Fabric / Synapse"], ["Streaming ingestion", "Kinesis Data Streams", "Azure Event Hubs"], ["BI dashboards", "Amazon QuickSight", "Power BI"], ["Data catalog & governance", "Glue Data Catalog / Lake Formation", "Microsoft Purview"]],
-      code: [{ label: "Query partitioned Parquet with Athena (SQL)", code: `-- Only the October 2026 partition and three columns are read,
+      code: [{ label: "Query partitioned Parquet with Athena (SQL)", note: "A SQL query. WHERE year and month match the partition folders, so Athena reads only October 2026; SUM adds up revenue for each store, and the top 10 stores are returned. Lines starting with -- are comments.", code: `-- Only the October 2026 partition and three columns are read,
 -- so you pay for a tiny fraction of the table.
 SELECT store_id, SUM(amount_cents) / 100.0 AS revenue
 FROM sales
@@ -152,6 +225,10 @@ LIMIT 10;` }],
 `,
         tests: `assert partition_path("sales", "2026-10-05") == "sales/year=2026/month=10/day=05/"
 assert partition_path("clicks", "2025-01-31") == "clicks/year=2025/month=01/day=31/"`,
+        hint: "date_str.split(\"-\") gives the year, month and day as text. Then build the string with an f-string.",
+        solution: `def partition_path(table, date_str):
+    year, month, day = date_str.split("-")
+    return f"{table}/year={year}/month={month}/day={day}/"`,
       }, {
         prompt: "Write columnar_bytes(table_bytes, total_columns, needed_columns) estimating how many bytes a columnar scan reads if columns are equally sized (table_bytes * needed / total). Then compare to a full row-format scan.",
         starter: `def columnar_bytes(table_bytes, total_columns, needed_columns):
@@ -159,6 +236,9 @@ assert partition_path("clicks", "2025-01-31") == "clicks/year=2025/month=01/day=
 `,
         tests: `assert columnar_bytes(1_000_000_000, 50, 3) == 60_000_000
 assert columnar_bytes(500, 10, 10) == 500`,
+        hint: "Multiply first, then divide: table_bytes * needed_columns // total_columns keeps the answer a whole number.",
+        solution: `def columnar_bytes(table_bytes, total_columns, needed_columns):
+    return table_bytes * needed_columns // total_columns`,
       }],
       cards: [
         ["Why store analytics data as Parquet instead of CSV?", "Columnar layout reads only the needed columns, compresses better and keeps types, so queries are faster and cheaper, especially on pay-per-scan engines."],
@@ -168,15 +248,27 @@ assert columnar_bytes(500, 10, 10) == 500`,
     },
     {
       id: "governance", title: "Governance, landing zones & migration", short: "Gov",
-      body: `<ul>
-          <li><b>Landing zone:</b> a pre-built, secure multi-account foundation. AWS: Organizations with organizational units, Control Tower, and SCP guardrails. Azure: management groups, subscriptions per workload/environment, Azure Policy, following the Cloud Adoption Framework.</li>
-          <li>Separate <b>production and non-production</b>, and keep central <b>logging/audit</b> and <b>security</b> accounts or subscriptions that workload teams can't modify.</li>
-          <li><b>Identity federation:</b> one corporate identity (often Microsoft Entra ID, even at AWS shops) with SSO into every account.</li>
-          <li><b>Policy as code:</b> deny public storage, require encryption and tags, restrict regions (e.g. Canada only for residency).</li>
-          <li><b>Tagging strategy:</b> owner, environment, cost-center, data-classification, enforced automatically.</li>
-          <li><b>Migration strategies (the 7 Rs):</b> Retire, Retain, Rehost (lift and shift), Relocate, Repurchase (move to SaaS), Replatform (small changes, e.g. managed DB), Refactor (re-architect cloud-native). Tools: AWS Application Migration Service / Azure Migrate.</li></ul>`,
+      terms: [["Governance", "The rules and controls that keep a company's cloud use safe, legal and affordable."],
+        ["Account / subscription", "The container for cloud resources and their bill: AWS calls it an account, Azure a subscription."],
+        ["Landing zone", "A ready-made, secure set of accounts or subscriptions that every new project starts in."],
+        ["Guardrail", "A rule nobody in the account can break, even an administrator, such as \"no resources outside Canada\".", "iam"],
+        ["Policy as code", "Writing those rules as files that are checked and enforced automatically."],
+        ["SSO / identity federation", "Single sign-on: one company login that works in every account, because the accounts trust the company's identity system."],
+        ["Tag", "A label on a resource, like owner=payments.", "operations"],
+        ["Data residency", "Rules that some data must stay in one country.", "fundamentals"],
+        ["Migration", "Moving existing applications from a company's own data center into the cloud."],
+        ["Cloud-native", "Built to use cloud services (managed databases, serverless, autoscaling) rather than copied from a data center as-is."]],
+      body: `<p>In plain words: a big company might have hundreds of teams using the cloud. Governance is how it keeps them all safe and within budget without slowing them down: a standard set of accounts, rules enforced automatically, and one company login. This topic also covers how companies move existing apps into the cloud.</p>
+        <ul>
+          <li><b>Landing zone:</b> [[AWS Organizations with organizational units (OUs), Control Tower and service control policy (SCP) guardrails|Azure management groups, a subscription per workload and environment, and Azure Policy, following the Cloud Adoption Framework]].</li>
+          <li>Separate <b>production from non-production</b>, and keep central <b>logging/audit</b> and <b>security</b> accounts or subscriptions that project teams can't change.</li>
+          <li><b>Identity federation:</b> one company identity (often Microsoft Entra ID, even at companies that mostly use AWS) with single sign-on into every account.</li>
+          <li><b>Policy as code:</b> deny public storage, require encryption and tags, and restrict regions (for example, Canada only, for data residency).</li>
+          <li><b>Tagging strategy:</b> owner, environment, cost-center and data-classification on every resource, enforced automatically.</li>
+          <li><b>Migration strategies (the 7 Rs):</b> Retire (switch it off), Retain (leave it where it is), Rehost (move it as-is onto cloud VMs, "lift and shift"), Relocate (move a whole virtualized environment), Repurchase (switch to a SaaS product), Replatform (small changes, such as a managed database), Refactor (rebuild it cloud-native). Tools: [[AWS Application Migration Service|Azure Migrate]].</li></ul>
+        <p><b>Example:</b> a bank's landing zone has separate production and development accounts for each team, a log-archive account nobody else can delete from, and a policy that blocks any resource outside the two Canadian regions. A new team gets its accounts in a day, already connected to the company login and already compliant.</p>`,
       map: [["Multi-account structure", "AWS Organizations (OUs)", "Management groups + subscriptions"], ["Landing zone automation", "AWS Control Tower", "Azure landing zone accelerators"], ["Preventive guardrails", "Service control policies", "Azure Policy (deny)"], ["Config compliance", "AWS Config rules", "Azure Policy compliance"], ["Migration tooling", "Application Migration Service", "Azure Migrate"], ["Adoption guidance", "AWS Cloud Adoption Framework", "Microsoft Cloud Adoption Framework"]],
-      code: [{ label: "Azure Policy rule: deny resources without a cost-center tag (JSON)", code: `{
+      code: [{ label: "Azure Policy rule: deny resources without a cost-center tag (JSON)", note: "An Azure Policy definition in JSON. If a new resource has no cost-center tag, the effect deny blocks it from being created.", code: `{
   "mode": "Indexed",
   "policyRule": {
     "if": { "field": "tags['cost-center']", "exists": "false" },
@@ -192,6 +284,15 @@ assert columnar_bytes(500, 10, 10) == 500`,
 assert missing_tags(tags, ["owner", "env", "cost-center", "data-class"]) == ["cost-center", "data-class"]
 assert missing_tags({}, ["a"]) == ["a"]
 assert missing_tags({"A": "1"}, ["a"]) == []`,
+        hint: "Make a lowercase copy of the tags first: {k.lower(): v for k, v in tags.items()}. A key is missing if it isn't there or its value.strip() is empty. Sort the result.",
+        solution: `def missing_tags(tags, required):
+    present = {k.lower(): v for k, v in tags.items()}
+    missing = []
+    for key in required:
+        value = present.get(key.lower())
+        if value is None or not str(value).strip():
+            missing.append(key)
+    return sorted(missing)`,
       }],
       cards: [
         ["Why separate production into its own account or subscription?", "It's the strongest isolation boundary: separate permissions, quotas, billing and blast radius, so a mistake or breach in dev can't touch production."],
@@ -217,6 +318,20 @@ assert is_allowed(policy, "s3:GetObject", "arn:aws:s3:::reports/q3.pdf")
 assert not is_allowed(policy, "s3:PutObject", "arn:aws:s3:::reports/q3.pdf"), "no allow: default deny"
 assert not is_allowed(policy, "s3:GetObject", "arn:aws:s3:::reports/secret/keys.txt"), "explicit deny wins"
 assert not is_allowed([], "s3:GetObject", "x")`,
+      hint: "A statement matches when one of its action patterns matches the action AND one of its resource patterns matches the resource. Loop over the statements: return False straight away on a matching Deny, remember a matching Allow, and return what you remembered at the end.",
+      solution: `from fnmatch import fnmatchcase
+
+def matches(patterns, value):
+    return any(fnmatchcase(value, p) for p in patterns)
+
+def is_allowed(statements, action, resource):
+    allowed = False
+    for s in statements:
+        if matches(s["actions"], action) and matches(s["resources"], resource):
+            if s["effect"] == "Deny":
+                return False
+            allowed = True
+    return allowed`,
     }],
     security: [{
       prompt: "Write risky_rules(rules): each rule is {'port': int, 'cidr': str}. Return the indexes of rules that open SSH/RDP or a database port (22, 3389, 3306, 5432, 1433, 6379, 27017) to the whole internet (0.0.0.0/0 or ::/0).",
@@ -227,6 +342,12 @@ assert not is_allowed([], "s3:GetObject", "x")`,
          {"port": 5432, "cidr": "10.0.0.0/16"}, {"port": 3389, "cidr": "::/0"}]
 assert risky_rules(rules) == [1, 3]
 assert risky_rules([]) == []`,
+      hint: "Put the risky ports in a set. Use enumerate(rules) to get each rule's index, and keep the index when the port is risky and the cidr is '0.0.0.0/0' or '::/0'.",
+      solution: `RISKY_PORTS = {22, 3389, 3306, 5432, 1433, 6379, 27017}
+
+def risky_rules(rules):
+    return [i for i, r in enumerate(rules)
+            if r["port"] in RISKY_PORTS and r["cidr"] in ("0.0.0.0/0", "::/0")]`,
     }],
     compute: [{
       prompt: "Write instances_needed(peak_rps, rps_per_instance, headroom, azs): instances to handle peak traffic plus headroom (e.g. 0.3 = 30%), at least one per AZ, rounded UP to a multiple of azs so each AZ gets the same number.",
@@ -239,6 +360,13 @@ def instances_needed(peak_rps, rps_per_instance, headroom, azs):
 assert instances_needed(100, 300, 0.3, 2) == 2
 assert instances_needed(900, 300, 0, 3) == 3
 assert instances_needed(1000, 100, 0.5, 3) == 15`,
+      hint: "Three steps: math.ceil(peak_rps * (1 + headroom) / rps_per_instance) instances for the load; at least azs of them; then round up to a multiple of azs with math.ceil(n / azs) * azs.",
+      solution: `import math
+
+def instances_needed(peak_rps, rps_per_instance, headroom, azs):
+    needed = math.ceil(peak_rps * (1 + headroom) / rps_per_instance)
+    needed = max(needed, azs)
+    return math.ceil(needed / azs) * azs`,
     }],
     containers: [{
       prompt: "Write parse_image(ref) returning {'registry', 'repository', 'tag'}. The first path part is a registry if it contains '.' or ':' or is 'localhost'; otherwise the registry is 'docker.io'. The tag follows the last ':' after the last '/', defaulting to 'latest'.",
@@ -249,6 +377,19 @@ assert instances_needed(1000, 100, 0.5, 3) == 15`,
 assert parse_image("123456789012.dkr.ecr.ca-central-1.amazonaws.com/app:1.4.2") == {"registry": "123456789012.dkr.ecr.ca-central-1.amazonaws.com", "repository": "app", "tag": "1.4.2"}
 assert parse_image("myacr.azurecr.io/team/api:2026.10") == {"registry": "myacr.azurecr.io", "repository": "team/api", "tag": "2026.10"}
 assert parse_image("localhost:5000/tool") == {"registry": "localhost:5000", "repository": "tool", "tag": "latest"}`,
+      hint: "Split on '/'. Only treat the first part as a registry when there's more than one part. Then look at the last path part: if it contains ':', split the rest once from the right with rsplit(':', 1).",
+      solution: `def parse_image(ref):
+    parts = ref.split("/")
+    first = parts[0]
+    if len(parts) > 1 and ("." in first or ":" in first or first == "localhost"):
+        registry, rest = first, "/".join(parts[1:])
+    else:
+        registry, rest = "docker.io", ref
+    if ":" in rest.split("/")[-1]:
+        repository, tag = rest.rsplit(":", 1)
+    else:
+        repository, tag = rest, "latest"
+    return {"registry": registry, "repository": repository, "tag": tag}`,
     }],
     storage: [{
       prompt: "Write lifecycle_tier(age_days, rules) where rules is a list of (min_age_days, tier). Return the tier of the rule with the largest min_age that age_days has reached.",
@@ -260,6 +401,13 @@ assert lifecycle_tier(5, rules) == "hot"
 assert lifecycle_tier(30, rules) == "cool"
 assert lifecycle_tier(120, rules) == "cold"
 assert lifecycle_tier(999, list(reversed(rules))) == "archive", "rules may be in any order"`,
+      hint: "Loop over the rules and keep the one with the biggest min_age that is still <= age_days. Don't assume the rules are sorted.",
+      solution: `def lifecycle_tier(age_days, rules):
+    best = None
+    for min_age, tier in rules:
+        if age_days >= min_age and (best is None or min_age > best[0]):
+            best = (min_age, tier)
+    return best[1]`,
     }],
     networking: [{
       prompt: "Write split_cidr(cidr, new_prefix) returning the subnets (as strings) when a network is divided into /new_prefix blocks, and usable_ips(cidr) for a cloud subnet: AWS and Azure both reserve 5 addresses per subnet. Hint: the ipaddress module.",
@@ -274,6 +422,15 @@ def usable_ips(cidr):
       tests: `assert split_cidr("10.0.0.0/16", 18) == ["10.0.0.0/18", "10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
 assert usable_ips("10.0.1.0/24") == 251
 assert usable_ips("10.0.0.0/28") == 11`,
+      hint: "ipaddress.ip_network(cidr) gives a network object. Its .subnets(new_prefix=...) method splits it, and .num_addresses counts every address in it.",
+      solution: `import ipaddress
+
+def split_cidr(cidr, new_prefix):
+    network = ipaddress.ip_network(cidr)
+    return [str(s) for s in network.subnets(new_prefix=new_prefix)]
+
+def usable_ips(cidr):
+    return ipaddress.ip_network(cidr).num_addresses - 5`,
     }],
     messaging: [{
       prompt: "Write backoff_delays(base, factor, cap, attempts): the retry delays for exponential backoff, base * factor**i for i = 0..attempts-1, each capped at cap. (In production, add random jitter so clients don't retry in lockstep.)",
@@ -283,6 +440,9 @@ assert usable_ips("10.0.0.0/28") == 11`,
       tests: `assert backoff_delays(0.5, 2, 30, 5) == [0.5, 1, 2, 4, 8]
 assert backoff_delays(1, 3, 20, 5) == [1, 3, 9, 20, 20]
 assert backoff_delays(1, 2, 10, 0) == []`,
+      hint: "A list comprehension over range(attempts) does it in one line: min(base * factor ** i, cap) for each i.",
+      solution: `def backoff_delays(base, factor, cap, attempts):
+    return [min(base * factor ** i, cap) for i in range(attempts)]`,
     }],
     devops: [{
       prompt: "Write bump(version, part) for semantic versions 'MAJOR.MINOR.PATCH': 'major' -> 2.0.0, 'minor' -> 1.5.0, 'patch' -> 1.4.3 (from 1.4.2). Raise ValueError for an unknown part.",
@@ -296,6 +456,16 @@ try:
     bump("1.0.0", "huge"); raise SystemExit("expected ValueError")
 except ValueError:
     pass`,
+      hint: "Split the version on '.' and turn each part into an int. Return a new string for each part name; for anything else, raise ValueError.",
+      solution: `def bump(version, part):
+    major, minor, patch = (int(x) for x in version.split("."))
+    if part == "major":
+        return f"{major + 1}.0.0"
+    if part == "minor":
+        return f"{major}.{minor + 1}.0"
+    if part == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    raise ValueError("unknown part: " + part)`,
     }],
     operations: [{
       prompt: "Write crossed_thresholds(spend, budget, thresholds) returning the budget-alert thresholds (percentages) that current spend has reached.",
@@ -305,6 +475,10 @@ except ValueError:
       tests: `assert crossed_thresholds(85, 100, [50, 80, 100]) == [50, 80]
 assert crossed_thresholds(10, 100, [50, 80, 100]) == []
 assert crossed_thresholds(100, 100, [50, 80, 100]) == [50, 80, 100]`,
+      hint: "Turn spend into a percentage of the budget (spend / budget * 100), then keep each threshold that percentage has reached (>=).",
+      solution: `def crossed_thresholds(spend, budget, thresholds):
+    percent = spend / budget * 100
+    return [t for t in thresholds if percent >= t]`,
     }],
   },
 

@@ -12,7 +12,7 @@ const blankState = () => ({ companies: [], code: {}, activity: {} });
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-  return Object.assign(blankState(), s || {});
+  return migrateCloud(Object.assign(blankState(), s || {})); // trackview.js: old "reviewed" marks and lab steps
 }
 let S = load();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { alert("Could not save to browser storage."); } }
@@ -157,8 +157,12 @@ const views = {
         <div class="setting"><div><b>Density</b><div class="muted">Compact tightens spacing in cards and lists.</div></div>
           ${seg("data-dens", S.density || "comfortable", [["comfortable", "Comfortable"], ["compact", "Compact"]])}</div>
       </div>
-      <div class="card"><h3>Your plan</h3>
-        <div class="setting"><div><b>${esc(T.name)} start date</b><div class="muted">${st.start ? `Week ${trackWeek("cloud")} of ${T.weeks.length}.` : "Not started. Pick a date or start it from the track's Overview."}</div></div>
+      <div class="card"><h3>Your path</h3>
+        <div class="setting"><div><b>Where are you starting from?</b><div class="muted">New to IT starts with Cloud from zero and orders the topics so each builds on the last. Already in IT keeps the full topic order; Cloud from zero stays optional.</div></div>
+          ${seg("data-level", S.level || "new", LEVELS)}</div>
+        <div class="setting"><div><b>Which cloud are you following?</b><div class="muted">Lessons lead with this provider's service names and show the other as "on Azure" / "on AWS". Banks and insurers lean Azure; startups lean AWS.</div></div>
+          ${pickSeg()}</div>
+        <div class="setting"><div><b>${esc(T.name)} start date</b><div class="muted">${st.start ? `Week ${trackWeek("cloud")} of ${trWeeks(T).length}.` : "Not started. Pick a date or start it from the track's Overview."}</div></div>
           <input type="date" data-trstartdate="cloud" value="${st.start || ""}"></div>
       </div>
       <div class="card"><h3>Backup</h3>
@@ -228,7 +232,7 @@ document.addEventListener("change", (e) => {
   else if (t.id === "s-import" && t.files[0]) {
     t.files[0].text().then((txt) => {
       // accepts this app's exports and the combined Prep Hub's (whose track progress lives in S.tr)
-      try { const d = JSON.parse(txt); if (!d || typeof d !== "object" || !("activity" in d)) throw 0; S = Object.assign(load(), d); searchIndex = null; save(); render(); }
+      try { const d = JSON.parse(txt); if (!d || typeof d !== "object" || !("activity" in d)) throw 0; S = migrateCloud(Object.assign(load(), d)); searchIndex = null; save(); render(); }
       catch (err) { alert("That file isn't a valid progress export."); }
     });
   }

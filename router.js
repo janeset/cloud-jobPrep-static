@@ -13,7 +13,7 @@ function currentPath() {
   const sec = sectionOf(tab), sub = tab.split(":")[1] || "overview";
   if (SEL_TRACKS.includes(sec)) {
     const st = trState(sec);
-    if (sub === "learn") return `${sec}/learn/${st.sel || TRACKS[sec].topics[0].id}`;
+    if (sub === "learn") return `${sec}/learn/${st.sel || defaultTopic(TRACKS[sec], st)}`;
     if (sub === "ibm" && st.ibmSel && st.ibmSel !== "overview") return `${sec}/ibm/${st.ibmSel}`;
     return `${sec}/${sub}`;
   }
@@ -28,7 +28,7 @@ function applyPath(hash) {
   if (!a) { tab = "home"; return; }
   if (SEL_TRACKS.includes(a)) {
     tab = `${a}:${b || "overview"}`;
-    if (b === "learn") trState(a).sel = c || null;
+    if (b === "learn") trState(a).sel = c && TRACKS[a].earned ? resolveTopic(TRACKS[a], c) || c : c || null; // Cloud: aliases; unknown ids show "Lesson not found"
     if (b === "ibm") trState(a).ibmSel = parts.slice(2).join("/") || "overview";
   } else if (a === "aws" || a === "interview") tab = `${a}:${b || "overview"}`;
   else if (SIMPLE_TABS.includes(a)) tab = a;

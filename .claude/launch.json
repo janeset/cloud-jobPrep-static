@@ -10,6 +10,16 @@
         "5175"
       ],
       "port": 5175
+    },
+    {
+      "name": "cloud-prep-alt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5185"
+      ],
+      "port": 5185
     }
   ]
 }

@@ -26,7 +26,8 @@ function buildSearchIndex() {
   // Cloud track and Roles lessons
   ["cloud", "roles"].forEach((id) => {
     const T = TRACKS[id];
-    T.topics.forEach((t) => add("lesson", t.title, T.name, stripHtml(t.body), () => { trState(id).sel = t.id; go(id + ":learn"); }));
+    T.topics.forEach((t) => add("lesson", t.title, isZero(T, t.id) ? `${T.name} · Cloud from zero` : T.name,
+      stripHtml(pvPlain(t.body)) + " " + (t.terms || []).map(([term, def]) => term + " " + def).join(" "), () => { trState(id).sel = t.id; go(id + ":learn"); }));
     T.questions.forEach((q) => add("question", q.q, `${T.name} · ${(topicById(T, q.topic) || {}).title || ""}`, q.a, () => {
       (views._trqf = views._trqf || {})[id] = { topic: q.topic, status: "" };
       go(id + ":questions"); revealEl(`[data-trshow="${id}:${q.id}"]`);

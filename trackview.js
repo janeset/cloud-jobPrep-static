@@ -4,6 +4,7 @@
 // today, dayDiff, streak...) at event/render time, after app.js has run.
 
 TRACKS.cloud = CLOUD;
+CLOUD.earned = true; // topics complete through their checks (topicDone)
 
 const TRACK_TABS = (id) => TRACKS[id].tabs || [["overview", "Overview"], ["roadmap", "Roadmap"], ["learn", "Learn"], ["questions", "Questions"], ["quiz", "Quiz"], ["labs", TRACKS[id].labsName], ["certs", "Certs"]];
 const CERT_STATUSES = ["Not planned", "Planning", "Studying", "Booked", "Passed"];
@@ -17,27 +18,95 @@ function sectionOf(t) {
   return m ? m[1] : null;
 }
 
+// Cloud's state carries a version (v) so migrateCloud knows saved progress is already in the new shape.
 function trState(id) {
   S.tr = S.tr || {};
-  S.tr[id] = Object.assign({ start: null, read: {}, qa: {}, quiz: {}, labs: {}, certs: {}, ex: {}, sel: null }, S.tr[id] || {});
+  S.tr[id] = Object.assign({ start: null, read: {}, qa: {}, quiz: {}, labs: {}, certs: {}, ex: {}, sel: null }, id === "cloud" ? { v: 2, pick: {} } : null, S.tr[id] || {});
   return S.tr[id];
 }
 function bump() { const t = today(); S.activity[t] = (S.activity[t] || 0) + 1; }
 function trackWeek(id) {
   const st = trState(id), T = TRACKS[id];
   if (!st.start) return 0;
-  return Math.min(T.weeks.length, Math.max(1, Math.floor(dayDiff(st.start, today()) / 7) + 1));
+  return Math.min(trWeeks(T).length, Math.max(1, Math.floor(dayDiff(st.start, today()) / 7) + 1));
 }
 const labDone = (id, lab) => lab.steps.every((_, k) => trState(id).labs[`${lab.id}:${k}`]);
 const labSteps = (id, lab) => lab.steps.filter((_, k) => trState(id).labs[`${lab.id}:${k}`]).length;
 function trackProgress(id) {
-  const T = TRACKS[id], st = trState(id);
-  const read = T.topics.filter((t) => st.read[t.id]).length, labs = T.labs.filter((l) => labDone(id, l)).length;
+  const T = TRACKS[id], st = trState(id), topics = learnPath(T);
+  const read = topics.filter((t) => topicDone(T, st, t.id)).length, labs = T.labs.filter((l) => labDone(id, l)).length;
   const answered = Object.keys(st.quiz).length, correct = Object.values(st.quiz).filter(Boolean).length;
   const got = T.questions.filter((q) => st.qa[q.id] === "got").length;
   const exTotal = T.topics.reduce((n, t) => n + (t.exercises || []).length, 0), exDone = Object.keys(st.ex).filter((k) => st.ex[k]).length;
-  const units = T.topics.length + T.labs.length;
-  return { read, labs, answered, correct, got, exTotal, exDone, pct: units ? (read + labs) / units : 0 };
+  const units = topics.length + T.labs.length;
+  return { read, topics: topics.length, labs, answered, correct, got, exTotal, exDone, pct: units ? (read + labs) / units : 0 };
+}
+
+// ---------------- the Learn path (Cloud) ----------------
+// Home asks where you're starting from. New to IT (the default until you choose): Cloud from zero,
+// then the topics in an order that builds on itself (groupsNew / weeksNew in cloud-zero.js).
+// Already in IT: the original order, with Cloud from zero shown as optional and left off the path.
+// Tracks without groupsNew (Roles) keep their own groups and order.
+const LEVELS = [["new", "I'm new to IT and cloud"], ["it", "I already work in IT or software"]];
+const beginner = () => S.level !== "it";
+const trGroups = (T) => (T.groupsNew && beginner() ? T.groupsNew : T.groups);
+const trWeeks = (T) => (T.weeksNew && beginner() ? T.weeksNew : T.weeks);
+const isZero = (T, tid) => !!T.zero && T.zero.includes(tid);
+// Sidebar order, used for Previous / Next.
+const sideOrder = (T) => (T.groupsNew ? trGroups(T).flatMap(([, ids]) => ids).map((tid) => topicById(T, tid)) : T.topics);
+const learnPath = (T) => sideOrder(T).filter((t) => beginner() || !isZero(T, t.id));
+const learnNext = (T, st) => learnPath(T).find((t) => !topicDone(T, st, t.id));
+// "Cloud from zero: Computers, servers and networks" where a bare title would be ambiguous (Home, Next).
+const topicLabel = (T, t) => (isZero(T, t.id) ? `Cloud from zero: ${t.title}` : t.title);
+
+// A topic is complete when every check (the quiz questions tagged with its id) is answered
+// correctly, on the topic page or in the Quiz tab. There's no "mark as reviewed" for Cloud.
+// Tracks without `earned` (Roles) still complete a lesson by marking it reviewed.
+const topicChecks = (T, tid) => T.quiz.filter((q) => q.topic === tid);
+function topicDone(T, st, tid) {
+  if (!T.earned) return !!st.read[tid];
+  const qs = topicChecks(T, tid);
+  return qs.length > 0 && qs.every((q) => st.quiz[q.id] === true);
+}
+
+// Which cloud the lessons lead with: "aws", "azure" or "both" (the default, side by side).
+const CLOUD_PICKS = [["both", "AWS and Azure"], ["aws", "AWS"], ["azure", "Azure"]];
+const cloudPick = () => S.cloudPick || "both";
+const PV_RE = /\[\[([^|\]]+)\|([^\]]+)\]\]/g;
+// Lesson text names services as [[AWS name|Azure name]]. Following one cloud shows its name first
+// and the other as "(on Azure: ...)"; following both shows them side by side.
+function pv(s) {
+  const pick = cloudPick();
+  return String(s).replace(PV_RE, (_, a, z) => pick === "aws" ? `${a} <span class="pv-alt">(on Azure: ${z})</span>`
+    : pick === "azure" ? `${z} <span class="pv-alt">(on AWS: ${a})</span>`
+    : a.length > 40 || z.length > 40 ? `<span class="pv-tag">AWS</span> ${a}; <span class="pv-tag">Azure</span> ${z}` : `${a} / ${z}`);
+}
+const pvPlain = (s) => String(s).replace(PV_RE, "$1 / $2");
+const pickSeg = () => `<div class="seg pick-seg">${CLOUD_PICKS.map(([v, l]) => `<button data-cloudpick="${v}" class="${cloudPick() === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+
+// Learn addresses: ids, short names ("k8s", "1") and a few obvious words open their lesson.
+function resolveTopic(T, key) {
+  if (!key) return null;
+  if (key === "courses" || key === "glossary" || topicById(T, key)) return key;
+  const k = String(key).toLowerCase(), slug = (s) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const t = T.topics.find((t) => t.id === k || (t.short || "").toLowerCase() === k || slug(t.title) === k);
+  return t ? t.id : (T.aliases || {})[k] || null;
+}
+
+// Progress saved before checks decided completion: "Mark as reviewed" no longer completes a Cloud
+// topic, so the old marks move to readOld (kept, and shown as a note on the topic), and lab ticks
+// follow their steps to the new positions (each step's `old` index). Nothing else is touched.
+// Runs on load and after an import (app.js), before anything calls trState.
+function migrateCloud(s) {
+  const c = s && s.tr && s.tr.cloud;
+  if (!c || c.v >= 2) return s;
+  if (c.read && Object.keys(c.read).length) c.readOld = Object.assign({}, c.readOld, c.read);
+  c.read = {};
+  const old = c.labs || {}, labs = {};
+  for (const [k, v] of Object.entries(old)) if (!CLOUD.labs.some((l) => k.startsWith(l.id + ":"))) labs[k] = v;
+  CLOUD.labs.forEach((l) => l.steps.forEach((step, k) => { if (step.old !== undefined && old[`${l.id}:${step.old}`]) labs[`${l.id}:${k}`] = true; }));
+  c.labs = labs; c.pick = c.pick || {}; c.v = 2;
+  return s;
 }
 function ring(pct, label, size = 120) {
   const C = 2 * Math.PI * 52;
@@ -77,28 +146,46 @@ function homeView() {
   const hr = new Date().getHours(), hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const st = streak(), todayCount = S.activity[today()] || 0;
-  const T = TRACKS.cloud, s = trState("cloud"), wk = trackWeek("cloud");
+  const T = TRACKS.cloud, s = trState("cloud"), wk = trackWeek("cloud"), weeks = trWeeks(T);
+  const path = learnPath(T), next = learnNext(T, s), done = path.filter((t) => topicDone(T, s, t.id)).length;
+  const fresh = !done && !Object.keys(S.activity).length;
+  const zeroDone = T.zero.filter((tid) => topicDone(T, s, tid)).length;
 
   const trackCard = (id) => {
-    const T = TRACKS[id], s = trState(id), p = trackProgress(id), wk = trackWeek(id);
-    const w = wk ? T.weeks[wk - 1] : T.weeks[0];
-    const nextTopic = w.topics.map((t) => topicById(T, t)).find((t) => !s.read[t.id]);
+    const T = TRACKS[id], s = trState(id), p = trackProgress(id), wk = trackWeek(id), weeks = trWeeks(T);
+    const w = wk ? weeks[wk - 1] : weeks[0], nextTopic = learnNext(T, s);
     return `<div class="card track-card t-${id}">
       <div class="tc-head"><span class="tc-icon">${TRACK_ICON[id]}</span><div><h3>${esc(T.name)}</h3><p class="muted">${esc(T.tagline)}</p></div></div>
-      <div class="tc-body">${ring(p.pct, `${p.read + p.labs}/${T.topics.length + T.labs.length} done`, 104)}
-        <div class="tc-meta"><div class="label">${wk ? `Week ${wk} of ${T.weeks.length}` : "Not started"}</div><div>${esc(w.title)}</div>
-          ${nextTopic ? `<div class="muted">Next: ${esc(nextTopic.title)}</div>` : ""}
+      <div class="tc-body">${ring(p.pct, `${p.read + p.labs}/${p.topics + T.labs.length} done`, 104)}
+        <div class="tc-meta"><div class="label">${wk ? `Week ${wk} of ${weeks.length}` : "Plan not started"}</div><div>${esc(w.title)}</div>
+          ${nextTopic ? `<div class="muted">Next: ${esc(topicLabel(T, nextTopic))}</div>` : ""}
           ${p.answered ? `<span class="badge plain">Quiz ${Math.round(100 * p.correct / p.answered)}%</span>` : ""}</div></div>
-      <div class="row">${s.start ? `<button class="btn primary" data-track-go="${id}">Continue &rarr;</button>` : `<button class="btn primary" data-trstart="${id}">Start this track</button><button class="btn ghost" data-track-go="${id}">Explore</button>`}</div></div>`;
+      <div class="row">${nextTopic ? `<button class="btn primary" ${goLearn(id, nextTopic.id)}>${fresh ? "Start here" : "Continue"} &rarr;</button>` : `<button class="btn primary" data-track-go="${id}">Open &rarr;</button>`}
+        ${s.start ? "" : `<button class="btn ghost" data-trstart="${id}" title="Sets today as week 1 of the plan">Start the ${weeks.length}-week plan</button>`}</div></div>`;
   };
 
-  return `<section class="card hero home-hero">
+  // Shown until the learner chooses; the same choice is in Settings.
+  const levelPick = S.level ? "" : `<div class="card level-pick"><h3 style="margin-top:0">Where are you starting from?</h3>
+      <p class="muted">This sets the order of the lessons. You can change it any time in Settings.</p>
+      <div class="level-opts">
+        <button class="level-opt" data-level="new"><b>${esc(LEVELS[0][1])}</b><span class="muted">Start with Cloud from zero: what servers, networks and the internet are, the command line, and staying safe online, in plain language. Then the cloud topics, in an order where each one builds on the last.</span></button>
+        <button class="level-opt" data-level="it"><b>${esc(LEVELS[1][1])}</b><span class="muted">Start with Cloud fundamentals and IAM and follow the full topic list. Cloud from zero stays in the sidebar as an optional refresher.</span></button>
+      </div></div>`;
+  const pickName = CLOUD_PICKS.find(([v]) => v === cloudPick())[1];
+  const pathLine = `<p class="lang-line">${beginner() ? `Your path starts with <b style="color:var(--text)">Cloud from zero</b> (${zeroDone}/${T.zero.length} lessons done)` : "Your path starts with <b style=\"color:var(--text)\">Cloud fundamentals</b>"}, and you're following <b style="color:var(--text)">${esc(pickName)}</b>. <button class="link-btn inline-link" data-nav-go="settings">Change</button></p>`;
+  const primary = next ? `<button class="btn primary" ${goLearn("cloud", next.id)}>${fresh ? "Start here" : "Continue"}: ${esc(topicLabel(T, next))} &rarr;</button>`
+    : `<button class="btn primary" data-trgo="cloud|labs|">All topics complete: on to the labs &rarr;</button>`;
+
+  return `${levelPick}<section class="card hero home-hero">
       <div style="position:relative;z-index:1">
         <div class="eyebrow">${esc(dateStr)} · Toronto &amp; Kitchener-Waterloo</div>
         <h1>${hello}.</h1>
-        <p>Cloud engineering prep for AWS and Azure roles: an 8-week track with labs, AWS certification practice exams, and the skills real Cloud Engineer postings ask for. Pick up wherever you left off.</p>
-        <div class="row" style="margin-top:14px">
+        <p>Cloud engineering prep for AWS and Azure roles. ${beginner() ? "New to IT? Start from zero: five plain-language lessons, then" : "Work through"} ${path.length - (beginner() ? T.zero.length : 0)} cloud topics, each finished by answering its checks, plus hands-on labs, AWS certification practice exams, and the skills real Cloud Engineer postings ask for.</p>
+        ${pathLine}
+        <div class="row" style="margin-top:14px">${primary}</div>
+        <div class="row" style="margin-top:12px">
           <span class="badge plain">&#128293; ${st} day streak</span><span class="badge plain">${todayCount} thing${todayCount === 1 ? "" : "s"} done today</span>
+          <span class="badge plain">${done}/${path.length} lessons complete</span>
         </div>
       </div>
     </section>
@@ -106,14 +193,14 @@ function homeView() {
     <div class="cols-2">
       <div class="card"><h3>A sustainable weekly rhythm</h3>
         <table><tr><th>Day</th><th>Focus</th></tr>
-          <tr><td>Mon / Wed</td><td>One lesson + its quiz questions (45-60 min)</td></tr>
+          <tr><td>Mon / Wed</td><td>One lesson and its checks (45-60 min)</td></tr>
           <tr><td>Tue / Thu</td><td>Lab work: build it, then write the resume bullet (60 min)</td></tr>
           <tr><td>Fri</td><td>Interview questions out loud, or a mock interview (45 min)</td></tr>
           <tr><td>Sat</td><td>AWS practice exam or a weak-domain drill (60 min)</td></tr>
           <tr><td>Sun</td><td>Light review: glossary, flashcards, plan the week</td></tr></table>
         <p class="muted">Applying to banks and insurers? Lean Azure. Startups and mid-size tech? Lean AWS. Both value hands-on labs you can talk about.</p></div>
-      <div class="card"><div class="section-head"><h3>Your ${T.weeks.length} weeks</h3><button class="btn small ghost" data-trgo="cloud|roadmap|">Roadmap &rarr;</button></div><div class="list">
-        ${T.weeks.map((w) => `<div class="li"><div><span class="t">Week ${w.n}</span><div class="muted">${esc(w.title)}</div></div>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}</div>`).join("")}
+      <div class="card"><div class="section-head"><h3>Your ${weeks.length} weeks</h3><button class="btn small ghost" data-trgo="cloud|roadmap|">Roadmap &rarr;</button></div><div class="list">
+        ${weeks.map((w) => `<div class="li"><div><span class="t">Week ${w.n}</span><div class="muted">${esc(w.title)}</div></div>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}</div>`).join("")}
       </div>${s.start ? "" : `<p class="muted">Start the plan from the track card to track your current week.</p>`}</div>
     </div>`;
 }
@@ -144,8 +231,10 @@ function trackView(id, sub) {
 
 function topicRow(T, st, tid) {
   const t = topicById(T, tid);
-  return `<div class="li"><div><span class="t">${esc(t.title)}</span>${t.exercises ? `<div class="muted">${t.exercises.length} coding exercise${t.exercises.length === 1 ? "" : "s"}</div>` : ""}</div>
-    <div class="row">${st.read[tid] ? '<span class="badge done">Reviewed</span>' : '<span class="badge">To do</span>'}<button class="btn small" ${goLearn(T.id, tid)}>Open</button></div></div>`;
+  const n = topicChecks(T, tid).length, right = topicChecks(T, tid).filter((q) => st.quiz[q.id] === true).length;
+  const meta = [T.earned ? `${right}/${n} checks right` : "", t.exercises ? `${t.exercises.length} coding exercise${t.exercises.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
+  return `<div class="li"><div><span class="t">${esc(topicLabel(T, t))}</span>${meta ? `<div class="muted">${meta}</div>` : ""}</div>
+    <div class="row">${topicDone(T, st, tid) ? `<span class="badge done">${T.earned ? "Complete" : "Reviewed"}</span>` : '<span class="badge">To do</span>'}<button class="btn small" ${goLearn(T.id, tid)}>Open</button></div></div>`;
 }
 function labRow(T, lab) {
   const n = labSteps(T.id, lab);
@@ -154,23 +243,23 @@ function labRow(T, lab) {
 }
 
 function trOverview(T, st) {
-  const id = T.id, p = trackProgress(id), wk = trackWeek(id), w = wk ? T.weeks[wk - 1] : T.weeks[0];
-  const nextTopic = w.topics.map((t) => topicById(T, t)).find((t) => !st.read[t.id]) || T.topics.find((t) => !st.read[t.id]);
+  const id = T.id, p = trackProgress(id), wk = trackWeek(id), weeks = trWeeks(T), w = wk ? weeks[wk - 1] : weeks[0];
+  const nextTopic = learnNext(T, st);
   return `<section class="card hero t-${id}">
       <div style="position:relative;z-index:1">
-        <div class="eyebrow">${wk ? `Week ${wk} of ${T.weeks.length}` : "Not started yet"}</div>
+        <div class="eyebrow">${wk ? `Week ${wk} of ${weeks.length}` : "Plan not started yet"}</div>
         <h1>${esc(T.name)}</h1>
-        <p>${esc(T.tagline)}. ${wk ? `This week: <b style="color:var(--text)">${esc(w.title)}</b>.` : `An ${T.weeks.length}-week plan, about 4-6 hours a week.`}</p>
+        <p>${esc(T.tagline)}. ${wk ? `This week: <b style="color:var(--text)">${esc(w.title)}</b>.` : `An ${weeks.length}-week plan, about 4-6 hours a week.`} A topic is complete when you've answered all its checks correctly.</p>
         <div class="row" style="margin-top:14px">
-          ${st.start ? (nextTopic ? `<button class="btn primary" ${goLearn(id, nextTopic.id)}>Continue: ${esc(nextTopic.title)} &rarr;</button>` : `<button class="btn primary" data-trgo="${id}|quiz|">Take a quiz &rarr;</button>`)
-            : `<button class="btn primary" data-trstart="${id}">Start the ${T.weeks.length}-week plan</button>`}
+          ${nextTopic ? `<button class="btn primary" ${goLearn(id, nextTopic.id)}>${p.read ? "Continue" : "Start"}: ${esc(topicLabel(T, nextTopic))} &rarr;</button>` : `<button class="btn primary" data-trgo="${id}|quiz|">Take a quiz &rarr;</button>`}
+          ${st.start ? "" : `<button class="btn" data-trstart="${id}">Start the ${weeks.length}-week plan</button>`}
           <button class="btn" data-trgo="${id}|roadmap|">View roadmap</button>
         </div>
       </div>
-      ${ring(p.pct, `${p.read + p.labs}/${T.topics.length + T.labs.length} done`)}
+      ${ring(p.pct, `${p.read + p.labs}/${p.topics + T.labs.length} done`)}
     </section>
     <div class="grid">
-      <div class="card"><div class="label">Topics reviewed</div><div class="stat">${p.read}<small> / ${T.topics.length}</small></div><div class="bar"><i style="width:${(100 * p.read / T.topics.length) | 0}%"></i></div></div>
+      <div class="card"><div class="label">Topics complete</div><div class="stat">${p.read}<small> / ${p.topics}</small></div><div class="bar"><i style="width:${(100 * p.read / p.topics) | 0}%"></i></div></div>
       <div class="card"><div class="label">Questions mastered</div><div class="stat">${p.got}<small> / ${T.questions.length}</small></div><div class="muted">Interview question bank</div></div>
       <div class="card"><div class="label">Quiz accuracy</div><div class="stat">${p.answered ? Math.round(100 * p.correct / p.answered) + "%" : "-"}</div><div class="muted">${p.answered} answered</div></div>
       <div class="card"><div class="label">${esc(T.labsName)} completed</div><div class="stat">${p.labs}<small> / ${T.labs.length}</small></div><div class="muted">${p.exTotal ? `${p.exDone}/${p.exTotal} coding exercises` : "Resume-ready hands-on work"}</div></div>
@@ -187,10 +276,10 @@ function trOverview(T, st) {
 }
 
 function trRoadmap(T, st) {
-  const wk = trackWeek(T.id);
-  return pageHead(`${esc(T.name)} roadmap`, `${T.weeks.length} weeks. ${st.start ? `Started ${st.start}; change the date in Settings.` : "Start the plan from the Overview to track your current week."}`) +
-    T.weeks.map((w) => {
-      const done = w.topics.filter((t) => st.read[t]).length + w.labs.filter((l) => labDone(T.id, T.labs.find((x) => x.id === l))).length, total = w.topics.length + w.labs.length;
+  const wk = trackWeek(T.id), weeks = trWeeks(T);
+  return pageHead(`${esc(T.name)} roadmap`, `${weeks.length} weeks${beginner() ? ", starting with Cloud from zero" : ""}. ${st.start ? `Started ${st.start}; change the date in Settings.` : "Start the plan from the Overview to track your current week."}`) +
+    weeks.map((w) => {
+      const done = w.topics.filter((t) => topicDone(T, st, t)).length + w.labs.filter((l) => labDone(T.id, T.labs.find((x) => x.id === l))).length, total = w.topics.length + w.labs.length;
       return `<details class="card week ${w.n === wk ? "current" : ""}" ${w.n === wk || (!wk && w.n === 1) ? "open" : ""}>
         <summary><span style="flex:1">Week ${w.n} · ${esc(w.title)}</span>${w.n === wk ? '<span class="badge accent">This week</span>' : ""}<span class="muted">${total ? `${done}/${total}` : "review"}</span></summary>
         <p class="muted">${esc(w.goal)}</p>
@@ -200,17 +289,32 @@ function trRoadmap(T, st) {
 }
 
 // ---------------- learn ----------------
+// The Learn page a track opens on with no topic in the address: the next lesson on the path (Cloud),
+// or the first topic.
+const defaultTopic = (T, st) => (T.earned ? (learnNext(T, st) || learnPath(T)[0]) : T.topics[0]).id;
 function trLearn(T, st) {
-  const id = T.id, sel = st.sel && (st.sel === "courses" || st.sel === "glossary" || topicById(T, st.sel)) ? st.sel : T.topics[0].id;
-  const side = T.groups.map(([g, tids]) => `<div class="side-h" style="cursor:default">${esc(g)}</div>` + tids.map((tid) => {
-    const t = topicById(T, tid);
-    return `<button class="side-i ${sel === tid ? "active" : ""}" data-trsel="${id}|${tid}"><span class="lbl">${esc(t.title)}</span><span class="muted lbl">${st.read[tid] ? "✓" : ""}</span></button>`;
+  const id = T.id, valid = st.sel && (st.sel === "courses" || st.sel === "glossary" || topicById(T, st.sel));
+  // An address that matches no lesson says so (Cloud); other tracks fall back to the first topic.
+  const missing = T.earned && st.sel && !valid, sel = missing ? null : valid ? st.sel : defaultTopic(T, st);
+  const side = trGroups(T).map(([g, tids]) => `<div class="side-h" style="cursor:default">${esc(g)}${T.zero && tids === T.zero && !beginner() ? " (optional)" : ""}</div>` + tids.map((tid) => {
+    const t = topicById(T, tid), n = T.earned ? topicChecks(T, tid).length : 0;
+    const mark = topicDone(T, st, tid) ? "✓" : n ? `${topicChecks(T, tid).filter((q) => st.quiz[q.id] === true).length}/${n}` : "";
+    return `<button class="side-i ${sel === tid ? "active" : ""}" data-trsel="${id}|${tid}"><span class="lbl">${esc(t.title)}</span><span class="muted lbl">${mark}</span></button>`;
   }).join("")).join("") + `<div class="side-h" style="cursor:default">Reference</div>
     ${T.glossary && T.glossary.length ? `<button class="side-i ${sel === "glossary" ? "active" : ""}" data-trsel="${id}|glossary"><span class="lbl">Glossary</span><span class="muted lbl">${T.glossary.length}</span></button>` : ""}
     ${T.videos.courses && T.videos.courses.length ? `<button class="side-i ${sel === "courses" ? "active" : ""}" data-trsel="${id}|courses"><span class="lbl">Full courses</span></button>` : ""}`;
-  const body = sel === "courses" ? `<h2>Full courses</h2><p class="muted">Long-form videos to watch in chunks alongside the plan.</p><div class="card">${vids(T.videos.courses)}</div>`
+  const body = missing ? trMissing(T, st) : sel === "courses" ? `<h2>Full courses</h2><p class="muted">Long-form videos to watch in chunks alongside the plan.</p><div class="card">${vids(T.videos.courses)}</div>`
     : sel === "glossary" ? trGlossary(T) : trTopic(T, st, sel);
   return `<div class="ref-layout"><aside class="ref-side">${side}</aside><section class="ref-main">${body}</section></div>`;
+}
+
+// A Learn address that matches no lesson (mistyped, or from an older version of the app).
+function trMissing(T, st) {
+  const to = learnNext(T, st) || learnPath(T)[0];
+  return `<div class="label">Learn</div><h2>Lesson not found</h2>
+    <div class="card"><p>There's no lesson at <code>${esc(st.sel)}</code>. The link may be mistyped or from an older version of the app.</p>
+      <p class="muted">Lessons aren't locked: you can open any of them from the sidebar.</p>
+      <div class="row"><button class="btn primary" ${goLearn(T.id, to.id)}>Go to ${esc(topicLabel(T, to))} &rarr;</button></div></div>`;
 }
 
 function trGlossary(T) {
@@ -222,6 +326,7 @@ function trGlossary(T) {
 }
 
 function trTopic(T, st, tid) {
+  if (T.earned) return trEarnedTopic(T, st, tid);
   const id = T.id, i = T.topics.findIndex((t) => t.id === tid), t = T.topics[i];
   const group = (T.groups.find(([, ids]) => ids.includes(tid)) || [""])[0], shown = views._trq = views._trq || {};
   const mapTable = t.map ? `<div class="card"><h3>AWS vs Azure</h3><div class="table-wrap"><table><tr><th>Concept</th><th>AWS</th><th>Azure</th></tr>
@@ -247,6 +352,82 @@ function trTopic(T, st, tid) {
       <button class="btn ghost" data-trgo="${id}|questions|${tid}">Interview questions on this</button><button class="btn ghost" data-trgo="${id}|quiz|${tid}">Quiz on this</button></div>
     <div class="row between">${i > 0 ? `<button class="btn" data-trsel="${id}|${T.topics[i - 1].id}">&larr; ${esc(T.topics[i - 1].title)}</button>` : "<span></span>"}
       ${i < T.topics.length - 1 ? `<button class="btn primary" data-trsel="${id}|${T.topics[i + 1].id}">${esc(T.topics[i + 1].title)} &rarr;</button>` : `<button class="btn primary" data-trgo="${id}|quiz|">Take a quiz &rarr;</button>`}</div>`;
+}
+
+// A Cloud topic, written for someone meeting the terms for the first time: where it sits on the
+// path, the cloud being followed, the words it uses, the lesson, a guided task (Cloud from zero),
+// the AWS / Azure map, code, exercises with hints and model answers, then the checks that
+// complete it. Previous / Next follow the sidebar.
+function trEarnedTopic(T, st, tid) {
+  const id = T.id, order = sideOrder(T), i = order.findIndex((t) => t.id === tid), t = order[i];
+  const group = (trGroups(T).find(([, ids]) => ids.includes(tid)) || [""])[0], shown = views._trq = views._trq || {};
+  const pick = cloudPick(), done = topicDone(T, st, tid), checks = topicChecks(T, tid);
+  const right = checks.filter((q) => st.quiz[q.id] === true).length;
+  let pos = "";
+  if (isZero(T, tid)) {
+    const k = T.zero.indexOf(tid), nx = T.zero[k + 1] ? topicById(T, T.zero[k + 1]) : order.find((x) => !isZero(T, x.id));
+    pos = `<p class="lesson-pos">Lesson ${k + 1} of ${T.zero.length} in Cloud from zero. Next: <button class="link-btn inline-link" data-trsel="${id}|${nx.id}">${esc(T.zero[k + 1] ? nx.title : topicLabel(T, nx))}</button></p>`;
+  }
+  const status = done ? `<span class="badge done">Complete</span> You answered all ${checks.length} checks correctly.`
+    : `<span class="badge">To do</span> To complete this ${isZero(T, tid) ? "lesson" : "topic"}, answer the ${checks.length} checks at the end correctly (${right}/${checks.length} so far).`
+      + (st.readOld && st.readOld[tid] ? " You marked it reviewed in an earlier version; topics are now completed by their checks." : "");
+  const terms = t.terms ? `<div class="card terms"><h3>Words used in this ${isZero(T, tid) ? "lesson" : "topic"}</h3><dl class="gloss">${t.terms.map(([term, def, link]) =>
+    `<dt>${esc(term)}</dt><dd>${esc(def)}${link ? ` <button class="link-btn inline-link" data-trsel="${id}|${link}">Lesson: ${esc(topicById(T, link).title)}</button>` : ""}</dd>`).join("")}</dl></div>` : "";
+  const task = t.task ? `<div class="card task"><h3>Try it yourself: ${esc(t.task.title)}</h3><p>${esc(t.task.intro)}</p>
+      <ol>${t.task.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+      <div class="lab-see"><div class="label">What you should see</div><p>${esc(t.task.expect)}</p></div>
+      <details class="ex-help"><summary>Stuck? Open a hint</summary><p>${esc(t.task.hint)}</p></details>
+      <details class="ex-help"><summary>What good looks like</summary><pre>${esc(t.task.good)}</pre></details>
+      <p class="muted" style="margin-bottom:0">One of the checks below asks what you saw.</p></div>` : "";
+  // The provider you follow comes first; the other is shown as "On Azure" / "On AWS".
+  const cols = pick === "aws" ? [["AWS", 1], ["On Azure", 2]] : pick === "azure" ? [["Azure", 2], ["On AWS", 1]] : [["AWS", 1], ["Azure", 2]];
+  const mapTable = t.map ? `<div class="card"><h3>${pick === "both" ? "AWS vs Azure" : `${cols[0][0]} names, with the ${cols[1][0].slice(3)} equivalent`}</h3><div class="table-wrap"><table><tr><th>Concept</th><th>${cols[0][0]}</th><th>${cols[1][0]}</th></tr>
+    ${t.map.map((r) => `<tr><td>${esc(r[0])}</td><td><b style="font-weight:500">${esc(r[cols[0][1]])}</b></td><td${pick === "both" ? "" : ' class="muted"'}>${pick === "both" ? `<b style="font-weight:500">${esc(r[cols[1][1]])}</b>` : esc(r[cols[1][1]])}</td></tr>`).join("")}</table></div></div>` : "";
+  const codes = (t.code || []).map((c, k) => `<div class="card"><div class="section-head"><h3>${esc(c.label)}</h3><button class="btn small" data-trcopy="${id}|${tid}|${k}">Copy</button></div>
+    ${c.note ? `<p class="muted" style="margin-top:0"><b>What this does:</b> ${esc(c.note)}</p>` : ""}<pre>${esc(c.code)}</pre></div>`).join("");
+  const exercises = (t.exercises || []).map((ex, j) => {
+    const key = `${id}:${tid}-${j}`, rid = `trres-${id}-${tid}-${j}`;
+    return `<div class="card ex-card"><b>Exercise ${j + 1}${st.ex[key] ? ' <span class="s-solved">passed</span>' : ""}</b><p>${esc(ex.prompt)}</p>
+      <textarea data-trcode="${id}|${tid}|${j}" rows="${Math.max(6, ex.starter.split("\n").length + 3)}" spellcheck="false" aria-label="Your code for exercise ${j + 1}">${esc(S.code["tx:" + key] ?? ex.starter)}</textarea>
+      <div class="row"><button class="btn primary small" data-trex="${id}|${tid}|${j}">Run tests</button><button class="btn small" data-trexreset="${id}|${tid}|${j}">Reset</button></div>
+      <pre id="${rid}" class="muted" style="display:none"></pre>
+      ${ex.hint ? `<details class="ex-help"><summary>Hint</summary><p>${esc(ex.hint)}</p></details>` : ""}
+      ${ex.solution ? `<details class="ex-help"><summary>Model answer</summary><p class="muted">Try the hint first. If you open this, read it line by line, then close it and type your own version: that's what makes it stick.</p><pre>${esc(ex.solution)}</pre></details>` : ""}</div>`;
+  }).join("");
+  const vlist = T.videos[tid] || [], hasQs = T.questions.some((q) => q.topic === tid);
+  const prev = order[i - 1], next = order[i + 1];
+  return `<div class="label">${esc(group)}</div><h2>${esc(t.title)}</h2>${pos}
+    <div class="topic-meta"><p class="lang-line" style="margin:0">${status}</p>
+      <div class="pick-line"><span class="muted">Following:</span>${pickSeg()}</div></div>
+    ${terms}
+    <div class="card lesson-body">${pv(t.body)}</div>${task}${mapTable}${codes}
+    ${exercises ? `<div class="label" style="margin:6px 0 8px">Coding exercises (run in your browser; optional, they don't affect completion)</div>${exercises}` : ""}
+    ${trChecks(T, st, tid)}
+    <div class="card"><h3>Flashcards</h3><p class="muted">Say your answer out loud, then reveal it. These are for practice; the checks above are what complete the ${isZero(T, tid) ? "lesson" : "topic"}.</p>${t.cards.map(([q, a], k) => { const key = `${id}:${tid}:${k}`; return `<div class="flash"><div class="row between"><b>${esc(q)}</b>
+      <button class="btn small ${shown[key] ? "ghost" : ""}" data-trq="${key}">${shown[key] ? "Hide" : "Show answer"}</button></div>${shown[key] ? `<p class="flash-a">${esc(a)}</p>` : ""}</div>`; }).join("")}</div>
+    <div class="card"><div class="section-head"><h3>Videos</h3><span class="row"><a class="btn small" href="${yt(t.yt || t.title + " AWS Azure explained")}" target="_blank" rel="noopener">Find videos on YouTube &nearr;</a>${channelLink(T)}</span></div>
+      ${vlist.length ? vids(vlist) : `<p class="muted">No hand-picked video for this ${isZero(T, tid) ? "lesson" : "topic"} yet; the YouTube link searches for popular ones.</p>`}</div>
+    ${hasQs ? `<div class="row" style="margin-bottom:var(--gap)"><button class="btn ghost" data-trgo="${id}|questions|${tid}">Interview questions on this</button></div>` : ""}
+    <div class="row between">${prev ? `<button class="btn" data-trsel="${id}|${prev.id}">&larr; ${esc(isZero(T, prev.id) === isZero(T, tid) ? prev.title : topicLabel(T, prev))}</button>` : "<span></span>"}
+      ${next ? `<button class="btn primary" data-trsel="${id}|${next.id}">Next: ${esc(isZero(T, next.id) === isZero(T, tid) ? next.title : topicLabel(T, next))} &rarr;</button>` : `<button class="btn primary" data-trgo="${id}|labs|">On to the labs &rarr;</button>`}</div>`;
+}
+
+// "Check your understanding": the topic's quiz questions, answered in place. A right answer explains
+// why; a wrong one explains too and can be tried again. Answers are saved (st.quiz, as in the Quiz
+// tab, plus st.pick for the option chosen here), so a topic stays complete after a reload.
+function trChecks(T, st, tid) {
+  const qs = topicChecks(T, tid), pick = st.pick || {};
+  if (!qs.length) return "";
+  const right = qs.filter((q) => st.quiz[q.id] === true).length;
+  return `<div class="card checks" id="checks-${tid}"><div class="section-head"><h3>Check your understanding</h3><span class="badge ${right === qs.length ? "done" : ""}">${right}/${qs.length} right</span></div>
+    <p class="muted">Answer every question correctly to complete this ${isZero(T, tid) ? "lesson" : "topic"}. Each answer comes with an explanation.</p>` +
+    qs.map((q, n) => {
+      const ok = st.quiz[q.id] === true, c = ok && pick[q.id] === undefined ? q.answer : pick[q.id], answered = c !== undefined;
+      return `<div class="check-q"><p class="check-qq"><span class="label">Check ${n + 1}</span> ${esc(q.q)}</p>
+        <div class="quiz-opts">${q.options.map((o, k) => `<button class="quiz-opt ${answered ? (k === c ? (k === q.answer ? "right" : "wrong") : "") : ""}" data-trcheck="${T.id}|${q.id}|${k}" ${answered ? "disabled" : ""}><span class="qk">${"ABCD"[k]}</span>${esc(o)}</button>`).join("")}</div>
+        ${answered ? (c === q.answer ? `<p class="check-why"><b class="s-solved">Correct.</b> ${esc(q.why)}</p>`
+          : `<p class="check-why"><b class="M">Not quite.</b> ${esc(q.why)}</p><button class="btn small" data-trcheckretry="${T.id}|${q.id}">Try again</button>`) : ""}</div>`;
+    }).join("") + `</div>`;
 }
 
 // ---------------- questions ----------------
@@ -300,16 +481,30 @@ function trQuiz(T, st) {
 // ---------------- labs ----------------
 function trLabs(T, st) {
   const id = T.id, focus = views._trlab;
-  return pageHead(esc(T.labsName), "Hands-on work to put on your resume. Tick steps as you go; each one has a ready-made resume bullet.") +
+  const structured = T.labs.some((l) => typeof l.steps[0] === "object");
+  return pageHead(esc(T.labsName), structured
+    ? "Hands-on work in a real cloud account, to put on your resume. Each step says what to do, what you should see, a hint, and what good looks like. Ticking a step is self-reported: nothing checks your cloud account, so tick it once you've seen the expected result."
+    : "Hands-on work to put on your resume. Tick steps as you go; each one has a ready-made resume bullet.") +
     T.labs.map((l) => {
       const n = labSteps(id, l), all = n === l.steps.length;
+      // Labs with structured steps (Cloud) open with a cost warning and end with a clean-up step.
+      const steps = typeof l.steps[0] === "object" ? `<div class="callout lab-warn"><b>Before you start: this lab creates real cloud resources, and some cost money.</b>
+          <p><b>What can cost money:</b> ${esc(l.costs)}</p><p><b>Staying in the free tier:</b> ${esc(l.free)}</p>
+          <p style="margin-bottom:0">Set a budget alert first (step 1), work through the lab in one sitting, and always finish with the <b>Clean up</b> step so nothing keeps billing.</p></div>
+        <p class="muted lab-self">Ticking a step is self-reported: nothing checks your cloud account.</p>
+        ${l.steps.map((s, k) => `<div class="lab-step${k === l.steps.length - 1 ? " clean" : ""}">
+          <label class="check"><input type="checkbox" data-trlab="${id}|${l.id}|${k}" ${st.labs[`${l.id}:${k}`] ? "checked" : ""}><span><b>Step ${k + 1}.</b> ${pv(esc(s.do))}</span></label>
+          <div class="lab-see"><span class="label">What you should see</span> ${esc(s.see)}</div>
+          <details class="ex-help"><summary>Stuck? Open a hint</summary><p>${esc(s.hint)}</p></details>
+          <details class="ex-help"><summary>What good looks like</summary><pre>${esc(s.good)}</pre></details></div>`).join("")}`
+        : l.steps.map((s, k) => `<label class="check"><input type="checkbox" data-trlab="${id}|${l.id}|${k}" ${st.labs[`${l.id}:${k}`] ? "checked" : ""}><span>${esc(s)}</span></label>`).join("")
+          + `<div class="callout" style="margin-top:12px"><b>Cost &amp; safety:</b> ${esc(l.cost)}</div>`;
       return `<div class="card lab ${focus === l.id ? "focus" : ""}" id="lab-${l.id}">
         <div class="section-head"><h3>${esc(l.title)}</h3><span class="badge ${all ? "done" : ""}">${n}/${l.steps.length} steps</span></div>
         <div class="row" style="margin-bottom:10px"><span class="pill">${esc(l.level)}</span><span class="pill">${esc(l.time)}</span>${l.stack.map((s) => `<span class="tag">${esc(s)}</span>`).join("")}</div>
         <p>${esc(l.goal)}</p>
         <div class="bar" style="margin-bottom:10px"><i style="width:${(100 * n / l.steps.length) | 0}%"></i></div>
-        ${l.steps.map((s, k) => `<label class="check"><input type="checkbox" data-trlab="${id}|${l.id}|${k}" ${st.labs[`${l.id}:${k}`] ? "checked" : ""}><span>${esc(s)}</span></label>`).join("")}
-        <div class="callout" style="margin-top:12px"><b>Cost &amp; safety:</b> ${esc(l.cost)}</div>
+        ${steps}
         <h3>Resume bullet</h3><div class="row between resume"><p style="margin:0;flex:1">${esc(l.resume)}</p><button class="btn small" data-trres="${id}|${l.id}">Copy</button></div>
         <h3>Stretch goals</h3><ul>${l.stretch.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>`;
     }).join("");
@@ -367,12 +562,25 @@ document.addEventListener("click", (e) => {
     if (sub === "labs" && arg) { const n = document.getElementById("lab-" + arg); if (n) n.scrollIntoView({ block: "start" }); window.scrollBy(0, -120); }
     return;
   }
-  if ((b = el("[data-trsel]"))) { const [id, tid] = b.dataset.trsel.split("|"); trState(id).sel = tid; save(); render(); return window.scrollTo(0, 0); }
+  if ((b = el("[data-trsel]"))) {
+    const [id, tid] = b.dataset.trsel.split("|");
+    trState(id).sel = tid; save();
+    if (sectionOf(tab) !== id || !tab.endsWith(":learn")) return go(id + ":learn"); // links in Home, lessons or labs
+    render(); return window.scrollTo(0, 0);
+  }
   if ((b = el("[data-trread]"))) {
     const [id, tid] = b.dataset.trread.split("|"), st = trState(id);
     st.read[tid] = !st.read[tid]; if (st.read[tid]) bump(); else delete st.read[tid];
     save(); return rerender();
   }
+  if ((b = el("[data-trcheck]"))) {
+    const [id, qid, k] = b.dataset.trcheck.split("|"), q = TRACKS[id].quiz.find((x) => x.id === qid), st = trState(id);
+    st.pick = st.pick || {}; st.pick[qid] = +k; st.quiz[qid] = +k === q.answer;
+    bump(); save(); return rerender();
+  }
+  if ((b = el("[data-trcheckretry]"))) { const [id, qid] = b.dataset.trcheckretry.split("|"); delete trState(id).pick[qid]; save(); return rerender(); }
+  if ((b = el("[data-level]"))) { S.level = b.dataset.level; save(); return rerender(); }
+  if ((b = el("[data-cloudpick]"))) { S.cloudPick = b.dataset.cloudpick; save(); return rerender(); }
   if ((b = el("[data-trq]"))) { views._trq = views._trq || {}; views._trq[b.dataset.trq] = !views._trq[b.dataset.trq]; return rerender(); }
   if ((b = el("[data-trshow]"))) { views._tra = views._tra || {}; views._tra[b.dataset.trshow] = !views._tra[b.dataset.trshow]; return rerender(); }
   if ((b = el("[data-trqa]"))) {
